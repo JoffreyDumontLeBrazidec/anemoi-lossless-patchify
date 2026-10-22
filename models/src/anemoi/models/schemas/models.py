@@ -1,0 +1,422 @@
+# (C) Copyright 2024-2026 Anemoi contributors.
+#
+# This software is licensed under the terms of the Apache Licence Version 2.0
+# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+# In applying this licence, ECMWF does not waive the privileges and immunities
+# granted to it by virtue of its status as an intergovernmental organisation
+# nor does it submit to any jurisdiction.
+#
+
+from __future__ import annotations
+
+import logging
+from enum import Enum
+from typing import Annotated
+from typing import Any
+from typing import Literal
+from typing import Optional
+from typing import Union
+
+from omegaconf import DictConfig
+from omegaconf import OmegaConf
+from pydantic import BaseModel as PydanticBaseModel
+from pydantic import Field
+from pydantic import NonNegativeFloat
+from pydantic import NonNegativeInt
+from pydantic import PositiveFloat
+from pydantic import PositiveInt
+from pydantic import model_validator
+
+from anemoi.models.layers.target_features import VALID_TARGET_FEATURES
+from anemoi.models.schemas.schema_utils import DatasetDict
+from anemoi.utils.schemas import BaseModel
+
+from .aggregator import AggregatorSchema  # noqa: TC001
+from .bounding import BoundingSchema
+from .decoder import GNNDecoderSchema  # noqa: TC001
+from .decoder import GraphTransformerDecoderSchema  # noqa: TC001
+from .decoder import PointWiseBackwardMapperSchema  # noqa: TC001
+from .decoder import TransformerDecoderSchema  # noqa: TC001
+from .encoder import GNNEncoderSchema  # noqa: TC001
+from .encoder import GraphTransformerEncoderSchema  # noqa: TC001
+from .encoder import PointWiseForwardMapperSchema  # noqa: TC001
+from .encoder import TransformerEncoderSchema  # noqa: TC001
+from .processor import GNNProcessorSchema  # noqa: TC001
+from .processor import GraphTransformerProcessorSchema  # noqa: TC001
+from .processor import NoOpProcessorSchema  # noqa: TC001
+from .processor import PointWiseMLPProcessorSchema  # noqa: TC001
+from .processor import TransformerProcessorSchema  # noqa: TC001
+from .residual import ResidualConnectionSchema
+
+LOGGER = logging.getLogger(__name__)
+
+
+class DefinedModels(str, Enum):
+    ANEMOI_MODEL_ENC_PROC_DEC = "anemoi.models.models.encoder_processor_decoder.AnemoiModelEncProcDec"
+    ANEMOI_MODEL_ENC_PROC_DEC_SHORT = "anemoi.models.models.AnemoiModelEncProcDec"
+    ANEMOI_ENS_MODEL_ENC_PROC_DEC = "anemoi.models.models.ens_encoder_processor_decoder.AnemoiEnsModelEncProcDec"
+    ANEMOI_ENS_MODEL_ENC_PROC_DEC_SHORT = "anemoi.models.models.AnemoiEnsModelEncProcDec"
+    ANEMOI_MODEL_HIER_ENC_PROC_DEC = "anemoi.models.models.hierarchical.AnemoiModelEncProcDecHierarchical"
+    ANEMOI_MODEL_HIER_ENC_PROC_DEC_SHORT = "anemoi.models.models.AnemoiModelEncProcDecHierarchical"
+    ANEMOI_TRANSPORT_MODEL_ENC_PROC_DEC = (
+        "anemoi.models.models.transport_encoder_processor_decoder.AnemoiTransportModelEncProcDec"
+    )
+    ANEMOI_TRANSPORT_MODEL_ENC_PROC_DEC_SHORT = "anemoi.models.models.AnemoiTransportModelEncProcDec"
+    ANEMOI_TRANSPORT_TEND_MODEL_ENC_PROC_DEC = (
+        "anemoi.models.models.transport_encoder_processor_decoder.AnemoiTransportTendModelEncProcDec"
+    )
+    ANEMOI_TRANSPORT_TEND_MODEL_ENC_PROC_DEC_SHORT = "anemoi.models.models.AnemoiTransportTendModelEncProcDec"
+    ANEMOI_TRANSPORT_SPATIAL_DOWNSCALER_MODEL_ENC_PROC_DEC = (
+        "anemoi.models.models.transport_encoder_processor_decoder." "AnemoiTransportSpatialDownscalerModelEncProcDec"
+    )
+    ANEMOI_TRANSPORT_SPATIAL_DOWNSCALER_MODEL_ENC_PROC_DEC_SHORT = (
+        "anemoi.models.models.AnemoiTransportSpatialDownscalerModelEncProcDec"
+    )
+
+
+class Model(BaseModel):
+    target_: DefinedModels = Field(..., alias="_target_")
+    "Model object defined in anemoi.models.model."
+    hidden_nodes_name: str | list[str] = Field(examples=["hidden", ["hidden1", "hidden2"]])
+    "Name of the hidden nodes. If the model is hierarchical, it can be a list of names for each level."
+    latent_skip: bool = Field(default=True)
+    "Add skip connection in latent space before/after processor."
+    convert_: str = Field("none", alias="_convert_")
+    "Keep OmegaConf containers when instantiating — model code uses attribute-style access throughout."
+
+
+class SparseProjectorSchema(BaseModel):
+    num_chunks: PositiveInt = Field(default=1, examples=[1])
+    "Number of chunks to use for sparse projection matmuls."
+
+
+class TransportSourceConfig(BaseModel):
+    """Configuration of the starting/source field for transport objectives.
+
+    The defaults map 1:1 to :class:`TransportSourceSettings` in
+    ``anemoi.models.transport.settings`` and are restated here so that importing
+    the schemas does not pull in the model code.
+    """
+
+    kind: Literal["default", "zero", "gaussian", "reference_state"] = "default"
+    "Starting field used before the transport objective moves toward the target."
+    scale: NonNegativeFloat = Field(default=1.0, examples=[1.0])
+    "Multiplier applied to the starting/source field."
+    noise_scale: NonNegativeFloat = Field(default=0.0, examples=[0.1])
+    "Additional additive Gaussian noise applied to the starting/source field."
+
+
+class TransportConfig(BaseModel):
+    """Configuration of the transport objective, path, conditioning and inference.
+
+    The defaults map 1:1 to :class:`EdmSettings`, :class:`NoiseConditioningSettings`
+    and :class:`StochasticInterpolantSettings` in ``anemoi.models.transport.settings``
+    and are restated here so that importing the schemas does not pull in the model code.
+    """
+
+    objective: Literal["edm_diffusion", "stochastic_interpolant"] = "edm_diffusion"
+    "Training and sampling objective used by the transport model."
+    sigma_data: PositiveFloat = Field(default=1.0, examples=[1.0])
+    "Typical data scale used by EDM diffusion."
+    noise_channels: PositiveInt = Field(default=32, examples=[32])
+    "Number of channels in the noise or bridge-time embedding."
+    noise_cond_dim: PositiveInt = Field(default=16, examples=[16])
+    "Size of the conditioning vector passed to conditional layers."
+    sigma_max: PositiveFloat = Field(default=100.0, examples=[100.0])
+    "Maximum EDM diffusion noise level used during training."
+    sigma_min: PositiveFloat = Field(default=0.02, examples=[0.02])
+    "Minimum EDM diffusion noise level used during training."
+    rho: PositiveFloat = Field(default=7.0, examples=[7.0])
+    "Shape parameter for the Karras EDM noise schedule."
+    si_alpha_schedule: Literal["linear"] = "linear"
+    "Schedule for how strongly the SI bridge keeps the source field."
+    si_beta_schedule: Literal["linear", "quadratic"] = "linear"
+    "Schedule for how strongly the SI bridge moves toward the target field."
+    si_sigma_schedule: Literal["brownian_bridge", "quadratic_bridge"] = "brownian_bridge"
+    "Schedule for the SI bridge-noise amplitude."
+    source: TransportSourceConfig = Field(default_factory=TransportSourceConfig)
+    "Configuration for the starting/source field."
+    si_noise_scale: NonNegativeFloat = Field(default=1.0, examples=[1.0])
+    "Overall scale of the stochastic-interpolant bridge noise."
+    training_condition: dict = Field(default_factory=dict)
+    "Distribution used to sample one training noise level or bridge time per sample."
+    noise_embedder: dict = Field(default_factory=dict)
+    "Hydra configuration for embedding the current noise level or bridge time."
+    inference_defaults: dict = Field(default_factory=dict)
+    "Default sampler parameters used during inference."
+
+
+class TransportModel(Model):
+    transport: TransportConfig = Field(default_factory=TransportConfig)
+    "Transport model objective, path, conditioning, and inference configuration."
+
+
+class NoOutputMaskSchema(BaseModel):
+    target_: Literal["anemoi.training.utils.masks.NoOutputMask"] = Field(..., alias="_target_")
+
+
+class Boolean1DSchema(BaseModel):
+    target_: Literal["anemoi.training.utils.masks.Boolean1DMask"] = Field(..., alias="_target_")
+    attribute_name: str = Field(example="cutout_mask")
+
+
+OutputMaskSchemas = Union[NoOutputMaskSchema, Boolean1DSchema]
+
+
+class EncodersSchema(BaseModel):
+    """Encoder schema"""
+
+    source_datasets: list[str] = Field(..., example=["dataset1", "dataset2"])
+    "List of datasets for which the encoder is applicable."
+    dataset_fusing_strategy: Literal["not_supported", "concatenate_inputs_along_variable_dim"] = Field(
+        default="not_supported"
+    )
+    """How the source datasets are combined into one encoder input. Defaults to 'not_supported' (no fusing).
+
+    When fusing, the first source dataset is the anchor: the fused features live on its graph node set,
+    so the other source datasets must already be on its grid by the time they reach the encoder.
+    """
+    mapper: Union[
+        GNNEncoderSchema,
+        GraphTransformerEncoderSchema,
+        TransformerEncoderSchema,
+        PointWiseForwardMapperSchema,
+    ] = Field(
+        ...,
+        discriminator="target_",
+    )
+
+
+class DecodersSchema(BaseModel):
+    """Decoder schema"""
+
+    target_datasets: list[str] = Field(..., example=["dataset1", "dataset2"])
+    "List of datasets for which the decoder is applicable."
+    target_node_features: list[Literal[tuple(sorted(VALID_TARGET_FEATURES))]] = Field(
+        default_factory=lambda: ["encoded_data"]
+    )
+    "Whether to use the encoded latents from the encoder."
+    mapper: Union[
+        GNNDecoderSchema,
+        GraphTransformerDecoderSchema,
+        TransformerDecoderSchema,
+        PointWiseBackwardMapperSchema,
+    ] = Field(
+        ...,
+        discriminator="target_",
+    )
+
+
+class BaseModelSchema(PydanticBaseModel):
+    keep_batch_sharded: bool = Field(default=True)
+    "Keep the input batch and the output of the model sharded"
+    sparse_projector: SparseProjectorSchema = Field(default_factory=SparseProjectorSchema)
+    "Sparse projection settings."
+    model: Model = Field(default_factory=Model)
+    "Model schema."
+    node_trainable_parameters: dict[str, NonNegativeInt] = Field(examples=[{"data": 8, "hidden": 8}])
+    "Learnable node and edge parameters."
+    bounding: DatasetDict[list[BoundingSchema]]
+    "List of bounding configuration applied in order to the specified variables."
+    output_mask: DatasetDict[OutputMaskSchemas]  # !TODO CHECK!
+    "Output mask"
+    latent_skip: bool = True
+    "Add skip connection in latent space before/after processor."
+    latent_aggregator: AggregatorSchema
+    "Latent aggregator schema."
+    processor: Union[
+        NoOpProcessorSchema,
+        GNNProcessorSchema,
+        GraphTransformerProcessorSchema,
+        TransformerProcessorSchema,
+        PointWiseMLPProcessorSchema,
+    ] = Field(
+        ...,
+        discriminator="target_",
+    )
+    "Model processor schema."
+    encoders: dict[str, EncodersSchema]
+    "Model encoders schemas."
+    decoders: dict[str, DecodersSchema]
+    "Model decoders schemas."
+    residual: DatasetDict[ResidualConnectionSchema]
+    "Residual connection schema."
+    compile: Optional[list[dict[str, Any]]] = Field(None)
+    "Modules to be compiled"
+    recompile_limit: PositiveInt = 8
+    "How many times torch.compile will recompile a function for a given input shape."
+
+    @model_validator(mode="before")
+    @classmethod
+    def cast_encoder_decoder_keys_to_str(cls, data: Any) -> Any:
+        """Cast encoder/decoder dict keys to str (YAML may parse them as int)."""
+        for field in ("encoders", "decoders"):
+            if field in data:
+                if isinstance(data[field], dict):
+                    data[field] = {str(k): v for k, v in data[field].items()}
+                elif isinstance(data[field], DictConfig):
+                    data[field] = OmegaConf.create({str(k): v for k, v in data[field].items()})
+        return data
+
+
+class NoOpNoiseInjectorSchema(BaseModel):
+    """Schema for NoOpNoiseInjector - passes input through unchanged."""
+
+    target_: Literal["anemoi.models.layers.ensemble.NoOpNoiseInjector"] = Field(..., alias="_target_")
+    "No-op noise injector class"
+
+
+class NoiseConditioningSchema(BaseModel):
+    """Schema for NoiseConditioning - generates noise for conditioning."""
+
+    target_: Literal["anemoi.models.layers.ensemble.NoiseConditioning"] = Field(..., alias="_target_")
+    "Noise conditioning layer class"
+    noise_std: NonNegativeInt = Field(example=1)
+    "Standard deviation of the noise to be injected."
+    noise_channels_dim: NonNegativeInt = Field(example=4)
+    "Number of channels in the noise tensor."
+    noise_mlp_hidden_dim: NonNegativeInt = Field(example=8)
+    "Hidden dimension of the MLP used to process the noise."
+    layer_kernels: Union[dict[str, dict], None] = Field(default_factory=dict)
+    "Settings related to custom kernels for encoder processor and decoder blocks"
+    noise_matrix: Optional[str] = Field(default=None)
+    "Path to the noise projection matrix file (.npz). If None, no projection is applied."
+    noise_edges_name: Optional[tuple[str, str, str]] = Field(default=None)
+    "Edge type identifier (src, relation, dst) for graph-based noise projection."
+    edge_weight_attribute: Optional[str] = Field(default=None)
+    "Optional edge attribute name for graph-based noise projection weights."
+    row_normalize_noise_matrix: bool = Field(default=False)
+    "Whether to row-normalize the noise projection matrix weights."
+    autocast: bool = Field(default=False)
+    "Whether to use autocast for the noise projection matrix operations."
+
+
+class NoiseInjectorSchema(BaseModel):
+    """Schema for NoiseInjector - injects noise directly into input tensor."""
+
+    target_: Literal["anemoi.models.layers.ensemble.NoiseInjector"] = Field(..., alias="_target_")
+    "Noise injector layer class"
+    noise_std: NonNegativeInt = Field(example=1)
+    "Standard deviation of the noise to be injected."
+    noise_channels_dim: NonNegativeInt = Field(example=4)
+    "Number of channels in the noise tensor."
+    noise_mlp_hidden_dim: NonNegativeInt = Field(example=8)
+    "Hidden dimension of the MLP used to process the noise."
+    layer_kernels: Union[dict[str, dict], None] = Field(default_factory=dict)
+    "Settings related to custom kernels for encoder processor and decoder blocks"
+
+
+NoiseInjectorUnion = Annotated[
+    Union[NoOpNoiseInjectorSchema, NoiseConditioningSchema, NoiseInjectorSchema],
+    Field(discriminator="target_"),
+]
+
+
+class EnsModelSchema(BaseModelSchema):
+    noise_injector: NoiseInjectorUnion = Field(...)
+    "Noise injection configuration. Use NoOpNoiseInjector to disable, NoiseConditioning for conditioning, or NoiseInjector for direct injection."
+    condition_on_residual: bool = Field(default=False)
+    "Whether to condition the noise injection on the residual connection."
+
+
+class TransportModelSchema(BaseModelSchema):
+    model: TransportModel = Field(default_factory=TransportModel)
+    "Transport model schema."
+
+    @model_validator(mode="after")
+    def validate_no_bounding_for_transport(self) -> "TransportModelSchema":
+        if self.bounding:
+            if "datasets" in self.bounding:
+                for dataset_name, bounding_list in self.bounding["datasets"].items():
+                    if (bounding_list is not None) and len(bounding_list) > 0:
+                        msg = (
+                            "Transport models do not support bounding layers. "
+                            f"Found {len(bounding_list)} bounding configuration(s) for dataset '{dataset_name}'. "
+                            f"Please remove all bounding configurations for transport models."
+                        )
+                        raise ValueError(msg)
+            elif len(self.bounding) > 0:
+                msg = (
+                    "Transport models do not support bounding layers. "
+                    f"Found {len(self.bounding)} bounding configuration(s). "
+                    f"Please remove all bounding configurations for transport models."
+                )
+                raise ValueError(msg)
+        return self
+
+
+class TransportTendModelSchema(TransportModelSchema):
+    condition_on_residual: bool = Field(default=False)
+    "Whether to condition the noise injection on the residual connection."
+
+
+class TransportSpatialDownscalerModelSchema(TransportModelSchema):
+    residual_reference: dict[str, str] = Field(..., min_length=1, examples=[{"out_hres": "in_lres"}])
+    """Residual baseline of each target dataset, as ``{target: reference}``.
+
+    The model predicts ``target - reference`` for prognostic variables, with the reference projected
+    onto the target grid. The target is encoded and decoded on its reference's encoder node set.
+    """
+
+    @model_validator(mode="after")
+    def validate_residual_reference(self) -> "TransportSpatialDownscalerModelSchema":
+        self_referencing = sorted(
+            target for target, reference in self.residual_reference.items() if target == reference
+        )
+        if self_referencing:
+            msg = f"residual_reference: {self_referencing} use themselves as their own residual baseline."
+            raise ValueError(msg)
+        return self
+
+
+class HierarchicalModelSchema(BaseModelSchema):
+    enable_hierarchical_level_processing: bool = Field(default=False)
+    "Toggle to do message passing at every downscaling and upscaling step"
+    level_process_num_layers: NonNegativeInt = Field(default=1)
+    "Number of message passing steps at each level"
+    upscale_mapper: Union[
+        GNNEncoderSchema,
+        GraphTransformerEncoderSchema,
+        TransformerEncoderSchema,
+        PointWiseForwardMapperSchema,
+    ] = Field(
+        ...,
+        discriminator="target_",
+    )
+    "Mapper used to upscale from a lower level to a higher level in the hierarchy."
+    downscale_mapper: Union[
+        GNNDecoderSchema,
+        GraphTransformerDecoderSchema,
+        TransformerDecoderSchema,
+        PointWiseBackwardMapperSchema,
+    ] = Field(
+        ...,
+        discriminator="target_",
+    )
+    "Mapper used to downscale from a higher level to a lower level in the hierarchy."
+
+    @model_validator(mode="before")
+    @classmethod
+    def default_num_channels_in_hierarchical_mapper(cls, data: Any) -> Any:
+        """Allow num_channels to be omitted.
+
+        It will be set at model build time.
+        """
+        for mapper_field in ("upscale_mapper", "downscale_mapper"):
+            if mapper_field in data:
+                mapper = data[mapper_field]
+                if isinstance(data, dict):
+                    mapper["num_channels"] = 1
+                elif isinstance(data, DictConfig):
+                    OmegaConf.update(mapper, "num_channels", 1, force_add=True)
+        return data
+
+
+ModelSchema = Union[
+    BaseModelSchema,
+    EnsModelSchema,
+    HierarchicalModelSchema,
+    TransportModelSchema,
+    TransportTendModelSchema,
+    TransportSpatialDownscalerModelSchema,
+]

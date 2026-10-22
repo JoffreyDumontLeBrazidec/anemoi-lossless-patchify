@@ -1,0 +1,649 @@
+# (C) Copyright 2025-2026 Anemoi contributors.
+#
+# This software is licensed under the terms of the Apache Licence Version 2.0
+# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
+# In applying this licence, ECMWF does not waive the privileges and immunities
+# granted to it by virtue of its status as an intergovernmental organisation
+# nor does it submit to any jurisdiction.
+
+
+import logging
+from abc import abstractmethod
+from typing import Optional
+
+import torch
+from hydra.utils import instantiate
+from omegaconf import DictConfig
+from omegaconf import ListConfig
+from torch import Tensor
+from torch import nn
+from torch.distributed.distributed_c10d import ProcessGroup
+from torch_geometric.data import HeteroData
+
+from anemoi.models.distributed.graph import gather_tensor
+from anemoi.models.distributed.graph import shard_tensor
+from anemoi.models.distributed.shapes import DatasetShardSizes
+from anemoi.models.distributed.shapes import ShardSizes
+from anemoi.models.distributed.shapes import get_shard_sizes
+from anemoi.models.layers.bounding import build_boundings
+from anemoi.models.layers.graph import NamedNodesAttributes
+from anemoi.models.layers.target_features import DecodingTargetFeature
+from anemoi.models.layers.target_features import create_decoding_target_features
+from anemoi.models.utils.config import get_multiple_datasets_config
+from anemoi.utils.config import DotDict
+
+LOGGER = logging.getLogger(__name__)
+
+#: Value of ``encoders.*.dataset_fusing_strategy`` that disables fusion.
+NO_ENCODER_FUSION = "not_supported"
+
+#: Strategies for combining the ``source_datasets`` of a single encoder.
+SUPPORTED_ENCODER_FUSING_STRATEGIES = (NO_ENCODER_FUSION, "concatenate_inputs_along_variable_dim")
+
+
+class BaseGraphModel(nn.Module):
+    """Message passing graph neural network."""
+
+    supports_encoder_fusion: bool = False
+    # Set to ``True`` on models whose ``_assemble_input`` can combine several
+    # source datasets into one encoder input.
+
+    def __init__(
+        self,
+        *,
+        model_config: DictConfig,
+        data_indices: dict,
+        statistics: dict,
+        n_step_input: int,
+        n_step_output: int,
+        graph_data: HeteroData,
+    ) -> None:
+        """Initializes the graph neural network.
+
+        Parameters
+        ----------
+        model_config : DictConfig
+            Model configuration
+        data_indices : dict
+            Data indices
+        statistics : dict
+            Data statistics
+        graph_data : HeteroData
+            Graph definition
+        """
+        super().__init__()
+        self._graph_data = graph_data
+        self.data_indices = data_indices
+        self.statistics = statistics
+        self.n_step_input = n_step_input
+        self.n_step_output = n_step_output
+
+        self.dataset_names = list(data_indices.keys())
+        self._graph_name_hidden = model_config.model.hidden_nodes_name
+
+        self.latent_skip = model_config.model.latent_skip
+
+        self.node_attributes = NamedNodesAttributes(
+            model_config.node_trainable_parameters, self._build_named_node_attributes_graph()
+        )
+
+        self._build_encoder_routing(model_config.encoders)
+        self._build_decoder_routing(model_config.decoders)
+        self._build_target_routing()
+
+        self._calculate_shapes_and_indices(data_indices)
+
+        self._assert_model_routing()
+        self._assert_matching_indices(data_indices)
+        self._assert_hidden_nodes_name(self._graph_name_hidden)
+
+        # build networks
+        self._build_networks(model_config)
+
+        # build residual connection
+        self._build_residual(
+            get_multiple_datasets_config(model_config.residual),
+            sparse_projector_config=model_config.get("sparse_projector", {}),
+        )
+
+        # build boundings
+        # Instantiation of model output bounding functions (e.g., to ensure outputs like TP are positive definite)
+        # Multi-dataset: create ModuleDict with ModuleList per dataset
+        self.boundings = build_boundings(
+            get_multiple_datasets_config(model_config.get("bounding", [])),
+            data_indices=self.data_indices,
+            statistics=self.statistics,
+        )
+
+    def _build_encoder_routing(self, encoders_config: DotDict) -> None:
+        """Builds the dataset routing for encoders."""
+        self.dataset2encoder: dict[str, str] = {}
+        self.encoder2datasets: dict[str, list[str]] = {}
+        self.encoder2anchors: dict[str, list[str]] = {}
+        self.dataset2anchor: dict[str, str] = {}
+        self.encoder_fusing_strategy: dict[str, str] = {}
+        for encoder_name, encoder_config in encoders_config.items():
+            datasets_to_encode = list(encoder_config["source_datasets"])
+            fusing_strategy = encoder_config.dataset_fusing_strategy
+            anchors = self._resolve_encoder_anchors(encoder_name, datasets_to_encode, fusing_strategy)
+
+            self.encoder2datasets[encoder_name] = datasets_to_encode
+            self.encoder2anchors[encoder_name] = anchors
+            self.encoder_fusing_strategy[encoder_name] = fusing_strategy
+            fused = fusing_strategy != NO_ENCODER_FUSION
+            for d in datasets_to_encode:
+                self.dataset2encoder[d] = encoder_name
+                self.dataset2anchor[d] = anchors[0] if fused else d
+                if fused and d != anchors[0]:
+                    self._validate_same_grid(
+                        anchors[0], d, context=f"Encoder '{encoder_name}' fuses '{d}' onto anchor '{anchors[0]}'"
+                    )
+
+        # Only anchors are encoded in their own right; fused datasets ride along
+        # as extra features on their anchor's node set.
+        self.input_datasets = list(dict.fromkeys(d for anchors in self.encoder2anchors.values() for d in anchors))
+
+    @property
+    def inference_input_datasets(self) -> list[str]:
+        """Datasets whose data ``predict_step`` reads from the batch.
+
+        Every dataset an encoder consumes, fused or not — which is more than
+        ``input_datasets`` (the anchors) whenever an encoder fuses several
+        sources.
+        """
+        return list(dict.fromkeys(d for sources in self.encoder2datasets.values() for d in sources))
+
+    def _resolve_encoder_anchors(
+        self,
+        encoder_name: str,
+        source_datasets: list[str],
+        fusing_strategy: str,
+    ) -> list[str]:
+        """Return the datasets of ``encoder_name`` that own a graph node set.
+
+        Without fusion every source is its own anchor; with fusion the first
+        source is the anchor and the others ride along on its node set.
+        """
+        if fusing_strategy not in SUPPORTED_ENCODER_FUSING_STRATEGIES:
+            raise ValueError(
+                f"Encoder '{encoder_name}' has unsupported fusing strategy '{fusing_strategy}'. "
+                f"Supported strategies: {sorted(SUPPORTED_ENCODER_FUSING_STRATEGIES)}."
+            )
+
+        if fusing_strategy == NO_ENCODER_FUSION:
+            return list(source_datasets)
+
+        if not self.supports_encoder_fusion:
+            raise ValueError(
+                f"Encoder '{encoder_name}' requests dataset_fusing_strategy '{fusing_strategy}', "
+                f"which {type(self).__name__} does not support."
+            )
+        return [source_datasets[0]]
+
+    def _validate_same_grid(self, anchor: str, dataset_name: str, context: str) -> None:
+        """Raise unless ``dataset_name``'s graph nodes are ``anchor``'s, in the same order.
+
+        Parameters
+        ----------
+        anchor : str
+            Dataset whose graph node set the features of ``dataset_name`` are placed on.
+        dataset_name : str
+            Dataset that must share that node set.
+        context : str
+            Why the two must match, prefixed to the error message.
+        """
+        anchor_nodes = self.node_attributes.num_nodes[anchor]
+        dataset_nodes = self.node_attributes.num_nodes[dataset_name]
+        if anchor_nodes != dataset_nodes:
+            raise ValueError(
+                f"{context}: '{anchor}' has {anchor_nodes} nodes but '{dataset_name}' has {dataset_nodes}. "
+                "They must describe the same grid."
+            )
+
+        anchor_coords = self._graph_data[anchor].x.double()
+        dataset_coords = self._graph_data[dataset_name].x.double()
+        if not torch.allclose(anchor_coords, dataset_coords):
+            raise ValueError(
+                f"{context}: '{anchor}' and '{dataset_name}' have the same number of nodes but different "
+                "coordinates or node order. They must describe the same grid."
+            )
+
+    def _build_decoder_routing(self, decoders_config: DotDict) -> None:
+        """Builds the dataset routing for decoders."""
+        self.dataset2decoder: dict[str, str] = {}
+        self.decoder2datasets: dict[str, list[str]] = {}
+        self.decoders_target_input: dict[str, DecodingTargetFeature] = {}
+        for decoder_name, decoder_config in decoders_config.items():
+            datasets_to_decode = decoder_config["target_datasets"]
+            self.decoder2datasets[decoder_name] = datasets_to_decode
+            assert len(datasets_to_decode) == 1, "Each decoder must be associated with exactly one dataset for now."
+            for d in datasets_to_decode:
+                self.dataset2decoder[d] = decoder_name
+
+            self.decoders_target_input[decoder_name] = create_decoding_target_features(
+                decoder_config.target_node_features, datasets_to_decode, self
+            )
+
+        self.target_datasets = list(self.dataset2decoder.keys())
+
+    def _build_target_routing(self) -> None:
+        """Map each target to the anchor whose encoder-updated node features its decoder reads."""
+        self.target2anchor: dict[str, str] = {d: self.dataset2anchor.get(d, d) for d in self.target_datasets}
+
+    def _assert_model_routing(self) -> None:
+        """Asserts that the model routing is valid."""
+        not_input_datasets = sorted(set(self.input_datasets) - set(self.input_dim.keys()))
+        assert (
+            not not_input_datasets
+        ), f"Datasets {not_input_datasets} are encoder inputs but are not in the data_indices provided to the model. "
+
+        not_target_datasets = set(self.target_datasets) - set(self.output_dim.keys())
+        assert all(
+            d in self.target_datasets for d in self.dataset2decoder.keys()
+        ), f"Datasets {not_target_datasets} are in target_datasets but not in data_indices provided to the model. "
+
+        if not self.supports_encoder_fusion:
+            # Only one dataset is currently supported per encoder. Work in progress.
+            for encoder_name, datasets in self.encoder2datasets.items():
+                assert (
+                    len(datasets) == 1
+                ), f"Encoder '{encoder_name}' must be associated with exactly one dataset for now. New dataset fusing strategies will be implemented soon."
+
+        # Validated here. The target dimension may depend on the shapes computed in _calculate_shapes_and_indices
+        for target_features in self.decoders_target_input.values():
+            target_features.validate()
+
+    def _build_latent_aggregator(self, aggregator_config: DotDict) -> None:
+        """Build the latent aggregator."""
+        latent_aggregator_channels = {
+            dataset_name: self.encoder[self.dataset2encoder[dataset_name]].hidden_dim
+            for dataset_name in self.input_datasets
+        }
+
+        self.latent_aggregator = instantiate(
+            aggregator_config,
+            _recursive_=False,
+            input_channels=self.input_dim_latent,
+            source_channels=latent_aggregator_channels,
+        )
+
+    def _calculate_shapes_and_indices(self, data_indices: dict) -> None:
+        """Compute per-dataset input/output channel counts, dimensions and internal data indices."""
+        # Multi-dataset: create dictionaries for each property
+        self.num_input_channels = {}
+        self.num_output_channels = {}
+        self.num_input_channels_prognostic = {}
+        self.num_input_channels_forcings = {}
+        self.num_input_channels_decoding_forcings = {}
+        self._internal_input_idx = {}
+        self._internal_output_idx = {}
+        self._forcing_input_idx = {}
+        self.input_dim = {}
+        self.input_dim_latent = self._calculate_input_dim_latent()
+        self.target_dim = {}
+        self.output_dim = {}
+
+        for dataset_name, dataset_indices in data_indices.items():
+            self._internal_input_idx[dataset_name] = dataset_indices.model.input.prognostic
+            self._internal_output_idx[dataset_name] = dataset_indices.model.output.prognostic
+            self._forcing_input_idx[dataset_name] = dataset_indices.model.input.forcing
+
+            self.num_input_channels[dataset_name] = len(dataset_indices.model.input)
+            self.num_input_channels_forcings[dataset_name] = len(dataset_indices.model.input.forcing)
+            self.num_input_channels_prognostic[dataset_name] = len(dataset_indices.model.input.prognostic)
+            self.num_output_channels[dataset_name] = len(dataset_indices.model.output)
+
+        # Second pass: a dimension hook may read the channel counts of datasets
+        # other than its own (e.g. an encoder fusing several source datasets),
+        # so every count must already be in place.
+        for dataset_name in data_indices:
+            self.input_dim[dataset_name] = self._calculate_input_dim(dataset_name)
+            self.target_dim[dataset_name] = self._calculate_target_dim(dataset_name)
+            self.output_dim[dataset_name] = self._calculate_output_dim(dataset_name)
+
+    @staticmethod
+    def _as_hidden_node_names(
+        hidden_nodes_name: str | list[str] | ListConfig,
+    ) -> list[str]:
+        if isinstance(hidden_nodes_name, str):
+            return [hidden_nodes_name]
+
+        if isinstance(hidden_nodes_name, (list, ListConfig)):
+            return list(hidden_nodes_name)
+
+        raise TypeError(
+            f"Hidden nodes name must be a string or a list of strings, got {type(hidden_nodes_name)}",
+        )
+
+    def _assert_hidden_nodes_name(self, hidden_nodes_name: str) -> None:
+        for hidden_name in self._as_hidden_node_names(hidden_nodes_name):
+            assert (
+                hidden_name in self._graph_data.node_types
+            ), f"Hidden nodes name '{hidden_name}' not found in graph data node types {self._graph_data.node_types}"
+
+    def _calculate_input_dim(self, dataset_name: str) -> int:
+        """Calculate the encoder input dimension for a given dataset."""
+        return self.n_step_input * self.num_input_channels[dataset_name] + self.node_attributes.attr_ndims[dataset_name]
+
+    def _calculate_input_dim_latent(self) -> int:
+        """Calculate the latent input dimension."""
+        nodes_name = self._graph_name_hidden if isinstance(self._graph_name_hidden, str) else self._graph_name_hidden[0]
+        return self.node_attributes.attr_ndims[nodes_name]
+
+    def _calculate_target_dim(self, dataset_name: str) -> int:
+        """Calculate the decoder target input dimension for a given dataset.
+
+        Decoder target features are per-node vectors attached to the destination nodes of the
+        hidden-to-data decoder. The returned width is the sum
+        of the feature blocks listed in ``decoders_target_input`` for this dataset's decoder.
+        """
+        if dataset_name not in self.dataset2decoder:
+            LOGGER.warning(
+                "Dataset '%s' does not have a decoder associated with it. Target dimension will be calculated as 0.",
+                dataset_name,
+            )
+            return 0
+
+        return self.decoders_target_input[self.dataset2decoder[dataset_name]].dim
+
+    def _calculate_output_dim(self, dataset_name: str) -> int:
+        """Calculate the decoder output dimension for a given dataset."""
+        return self.n_step_output * self.num_output_channels[dataset_name]
+
+    def _assert_matching_indices(self, data_indices: dict) -> None:
+        # Multi-dataset: check assertions for each dataset
+        for dataset_name, dataset_indices in data_indices.items():
+            dataset_internal_output_idx = self._internal_output_idx[dataset_name]
+            dataset_internal_input_idx = self._internal_input_idx[dataset_name]
+
+            assert len(dataset_internal_output_idx) == len(dataset_indices.model.output.full) - len(
+                dataset_indices.model.output.diagnostic
+            ), (
+                f"Dataset '{dataset_name}': Mismatch between the internal data indices ({len(dataset_internal_output_idx)}) and "
+                f"the output indices excluding diagnostic variables "
+                f"({len(dataset_indices.model.output.full) - len(dataset_indices.model.output.diagnostic)})",
+            )
+            assert len(dataset_internal_input_idx) == len(
+                dataset_internal_output_idx,
+            ), f"Dataset '{dataset_name}': Model indices must match {dataset_internal_input_idx} != {dataset_internal_output_idx}"
+
+    def _assert_valid_sharding(
+        self,
+        batch_size: int,
+        ensemble_size: int,
+        in_out_sharded: bool,
+        model_comm_group: Optional[ProcessGroup] = None,
+    ) -> None:
+        assert not (
+            in_out_sharded and model_comm_group is None
+        ), "If input is sharded, model_comm_group must be provided."
+
+        if model_comm_group is not None:
+            assert (
+                model_comm_group.size() == 1 or batch_size == 1
+            ), "Only batch size of 1 is supported when model is sharded across GPUs"
+
+            assert (
+                model_comm_group.size() == 1 or ensemble_size == 1
+            ), "Ensemble size per device must be 1 when model is sharded across GPUs"
+
+    def _resolve_in_out_sharded(
+        self,
+        dataset_names: list[str],
+        grid_shard_sizes: DatasetShardSizes | None,
+    ) -> dict[str, bool]:
+        in_out_sharded: dict[str, bool] = {}
+        for dataset_name in dataset_names:
+            if grid_shard_sizes is None:
+                in_out_sharded[dataset_name] = False
+            else:
+                in_out_sharded[dataset_name] = grid_shard_sizes.get(dataset_name) is not None
+
+        return in_out_sharded
+
+    def _get_consistent_dim(self, x: dict[str, Tensor], dim: int) -> int:
+        dim_sizes = [_x.shape[dim] for _x in x.values()]
+        # Assert all datasets have the same sizes
+        assert all(bs == dim_sizes[0] for bs in dim_sizes), f"Dimensions must be the same across datasets: {dim_sizes}"
+
+        return dim_sizes[0]
+
+    @abstractmethod
+    def _build_networks(self, model_config: DotDict) -> None:
+        """Builds the networks for the model."""
+        pass
+
+    @abstractmethod
+    def _assemble_input(
+        self,
+        x,
+        batch_size,
+        grid_shard_sizes: DatasetShardSizes | None = None,
+        model_comm_group: ProcessGroup | None = None,
+    ):
+        pass
+
+    @abstractmethod
+    def _assemble_output(self, x_out, x_skip, batch_size, ensemble_size, dtype):
+        pass
+
+    def _build_residual(self, residual_configs: dict[str, DotDict], sparse_projector_config: DotDict) -> None:
+        """Instantiate the per-dataset residual connection modules."""
+        self.residual = torch.nn.ModuleDict()
+        sparse_projector_num_chunks = sparse_projector_config.get("num_chunks", 1)
+        for dataset_name, residual_config in residual_configs.items():
+            assert residual_config is not None, f"Residual config for dataset '{dataset_name}' is None."
+            self.residual[dataset_name] = instantiate(
+                residual_config,
+                graph=self._graph_data,
+                data_node_name=dataset_name,
+                statistics=self.statistics[dataset_name],
+                data_indices=self.data_indices[dataset_name],
+                dataset_name=dataset_name,
+                sparse_projector_num_chunks=sparse_projector_num_chunks,
+            )
+
+    def _build_named_node_attributes_graph(self) -> HeteroData:
+        node_attributes_graph = HeteroData()
+        for dataset_name in self.dataset_names:
+            node_attributes_graph[dataset_name].x = self._graph_data[dataset_name].x
+            node_attributes_graph[dataset_name].num_nodes = self._graph_data[dataset_name].num_nodes
+
+        for hidden_name in self._as_hidden_node_names(self._graph_name_hidden):
+            node_attributes_graph[hidden_name].x = self._graph_data[hidden_name].x
+            node_attributes_graph[hidden_name].num_nodes = self._graph_data[hidden_name].num_nodes
+
+        return node_attributes_graph
+
+    @abstractmethod
+    def forward(
+        self,
+        x: dict[str, Tensor],
+        *,
+        model_comm_group: Optional[ProcessGroup] = None,
+        grid_shard_sizes: DatasetShardSizes | None = None,
+        **kwargs,
+    ) -> dict[str, Tensor]:
+        """Forward pass of the model.
+
+        Parameters
+        ----------
+        x : dict[str, Tensor]
+            Input data.
+        model_comm_group : Optional[ProcessGroup], optional
+            Model communication group, by default None.
+        grid_shard_sizes : DatasetShardSizes, optional
+            Per-dataset shard sizes for the grid dimension. ``None`` means the
+            corresponding dataset is replicated, not sharded.
+        **kwargs
+            Additional model-specific arguments.
+
+        Returns
+        -------
+        dict[str, Tensor]
+            Output of the model, with the same shape as the input (sharded if
+            the corresponding input dataset is sharded).
+        """
+        pass
+
+    @staticmethod
+    def _apply_spatial_preprocessor(
+        tensors: tuple[Tensor, ...],
+        dataset_name: str,
+        spatial_pre_processors: Optional[nn.ModuleDict],
+        model_comm_group: Optional[ProcessGroup],
+        grid_shard_sizes: DatasetShardSizes | None,
+    ) -> tuple[tuple[Tensor, ...], DatasetShardSizes | None]:
+        """Apply one dataset's spatial preprocessor to tensors sharing a source grid."""
+        if spatial_pre_processors is None or dataset_name not in spatial_pre_processors:
+            return tensors, grid_shard_sizes
+
+        source_grid_shard_sizes = grid_shard_sizes[dataset_name] if grid_shard_sizes is not None else None
+        projected_tensors = []
+        output_grid_shard_sizes: ShardSizes = None
+        for index, tensor in enumerate(tensors):
+            projected_tensor, tensor_grid_shard_sizes = spatial_pre_processors[dataset_name](
+                tensor,
+                model_comm_group=model_comm_group,
+                grid_shard_sizes=source_grid_shard_sizes,
+            )
+            if index == 0:
+                output_grid_shard_sizes = tensor_grid_shard_sizes
+            elif tensor_grid_shard_sizes != output_grid_shard_sizes:
+                raise RuntimeError(
+                    f"Spatial preprocessor for {dataset_name!r} returned inconsistent target-grid shard sizes."
+                )
+            projected_tensors.append(projected_tensor)
+
+        if grid_shard_sizes is not None:
+            grid_shard_sizes[dataset_name] = output_grid_shard_sizes
+        return tuple(projected_tensors), grid_shard_sizes
+
+    def predict_step(
+        self,
+        batch: dict[str, torch.Tensor],
+        pre_processors: nn.ModuleDict,
+        post_processors: nn.ModuleDict,
+        n_step_input: int,
+        model_comm_group: Optional[ProcessGroup] = None,
+        gather_out: bool = True,
+        spatial_pre_processors: Optional[nn.ModuleDict] = None,
+        **kwargs,
+    ) -> dict[str, torch.Tensor]:
+        """Prediction step for the model.
+
+        Base implementation applies pre-processing, performs a forward pass, and applies post-processing.
+        Subclasses can override this for different behavior, such as transport sampling.
+
+        Parameters
+        ----------
+        batch : torch.Tensor
+            Input batched data (before pre-processing).
+        pre_processors : nn.Module
+            Pre-processing module.
+        post_processors : nn.Module
+            Post-processing module.
+        n_step_input : int
+            Number of input timesteps.
+        model_comm_group : Optional[ProcessGroup]
+            Process group for distributed training.
+        gather_out : bool
+            Whether to gather output tensors across distributed processes.
+        spatial_pre_processors : Optional[nn.ModuleDict]
+            Spatial preprocessors keyed by dataset name (e.g. CrossGridProjector).
+            Applied after grid sharding but before normalisation.
+        **kwargs
+            Additional arguments.
+
+        Returns
+        -------
+        dict[str, torch.Tensor]
+            Model output (after post-processing).
+        """
+        with torch.no_grad():
+            dataset_names = list(batch.keys())
+
+            for dataset_name in dataset_names:
+                assert (
+                    len(batch[dataset_name].shape) == 4
+                ), f"The {dataset_name} input tensor has an incorrect shape: expected a 4-dimensional tensor, got {batch[dataset_name].shape}!"
+                # Dimensions are: batch, timesteps, grid, variables
+
+            x = {}
+            for dataset_name in dataset_names:
+                x[dataset_name] = batch[dataset_name][
+                    :, 0:n_step_input, None, ...
+                ]  # add dummy ensemble dimension as 3rd index
+
+            # Handle distributed processing
+            grid_shard_sizes: DatasetShardSizes | None = None
+            if model_comm_group is not None:
+                grid_shard_sizes = {}
+                for dataset_name in dataset_names:
+                    grid_shard_sizes[dataset_name] = get_shard_sizes(
+                        x[dataset_name], -2, model_comm_group=model_comm_group
+                    )
+                    x[dataset_name] = shard_tensor(
+                        x[dataset_name], -2, grid_shard_sizes[dataset_name], model_comm_group
+                    )
+
+            # Spatial preprocessing: applied after grid sharding, before normalisation.
+            for dataset_name in dataset_names:
+                (projected_tensor,), grid_shard_sizes = self._apply_spatial_preprocessor(
+                    (x[dataset_name],),
+                    dataset_name,
+                    spatial_pre_processors,
+                    model_comm_group,
+                    grid_shard_sizes,
+                )
+                x[dataset_name] = projected_tensor
+
+            for dataset_name in dataset_names:
+                x[dataset_name] = pre_processors[dataset_name](x[dataset_name], in_place=False)
+            y_hat = self.forward(
+                x,
+                model_comm_group=model_comm_group,
+                grid_shard_sizes=grid_shard_sizes,
+                **kwargs,
+            )
+
+            # Apply post-processing (input-only datasets, i.e. without a decoder, have no output)
+            for dataset_name in y_hat:
+                y_hat[dataset_name] = post_processors[dataset_name](y_hat[dataset_name], in_place=False)
+
+            # Gather output if needed
+            if gather_out and model_comm_group is not None:
+                assert grid_shard_sizes is not None
+                for dataset_name in y_hat:
+                    y_hat[dataset_name] = gather_tensor(
+                        y_hat[dataset_name], -2, grid_shard_sizes[dataset_name], model_comm_group
+                    )
+
+        return y_hat
+
+    def fill_metadata(self, md_dict) -> None:
+        """Fill model-specific metadata.
+
+        Subclasses extend this with their own entries and must call
+        ``super().fill_metadata(md_dict)``.
+        """
+        self._fill_dataset_roles(md_dict)
+
+    def _fill_dataset_roles(self, md_dict) -> None:
+        """Record what each dataset is used for at inference time.
+
+        ``input`` datasets have to be retrieved and handed to the model,
+        ``output`` datasets are produced by it, and ``input_output`` datasets
+        are both — the usual case for a forecaster. Without this a runner
+        cannot tell the two sides of, say, a downscaler apart and has to be
+        told in its configuration.
+        """
+        inference_inputs = set(self.inference_input_datasets)
+        targets = set(self.target_datasets)
+
+        for dataset_name in dict.fromkeys([*self.inference_input_datasets, *self.target_datasets]):
+            is_input = dataset_name in inference_inputs
+            is_output = dataset_name in targets
+            role = "input_output" if is_input and is_output else "input" if is_input else "output"
+            md_dict["metadata_inference"].setdefault(dataset_name, {})["role"] = role

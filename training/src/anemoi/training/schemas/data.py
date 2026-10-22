@@ -1,0 +1,59 @@
+# (C) Copyright 2024-2026 Anemoi contributors.
+#
+# This software is licensed under the terms of the Apache Licence Version 2.0
+# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+# In applying this licence, ECMWF does not waive the privileges and immunities
+# granted to it by virtue of its status as an intergovernmental organisation
+# nor does it submit to any jurisdiction.
+#
+
+
+from __future__ import annotations
+
+from pydantic import BaseModel as PydanticBaseModel
+from pydantic import Field
+
+from anemoi.models.schemas.data_processor import PreprocessorSchema  # noqa: TC002
+from anemoi.models.schemas.spatial_processors import SpatialProcessorSchema  # noqa: TC002
+
+
+class DatasetDataSchema(PydanticBaseModel):
+    """A class used to represent the configuration of a single dataset."""
+
+    forcing: list[str] = Field(default_factory=list)
+    "Features that are not part of the forecast state but are used as forcing to generate the forecast state."
+    diagnostic: list[str] = Field(default_factory=list)
+    "Features that are only part of the forecast state and are not used as an input to the model."
+    target: list[str] | None = None
+    (
+        "Features used to compute the loss against forecasted variables. "
+        "Cannot be prognostic or diagnostic, can have the same name as forcing variables "
+        "but have a different role. Such that: prognostic = diagnostic - forcing.union(target)."
+    )
+
+    processors: dict[str, PreprocessorSchema]
+    "Layers of model performing computation on latent space. \
+        Processors including imputers and normalizers are applied in order of definition. (single dataset mode)"
+    spatial_processor: SpatialProcessorSchema | None = Field(default=None)
+    (
+        "Spatial preprocessor applied to this dataset before normalization "
+        "(e.g. CrossGridProjector for downscaling). May change the grid dimension."
+    )
+    residual_statistics: str | None = Field(default=None)
+    (
+        "Path to an .npz file of precomputed residual normalization statistics "
+        "(mean, minimum, maximum, stdev per variable), used to normalize the residuals "
+        "of this dataset's prognostic variables when it is a residual target (e.g. spatial "
+        "downscaling)."
+    )
+
+
+class DataSchema(PydanticBaseModel):
+    """A class used to represent the overall configuration of the dataset(s)."""
+
+    format: str = Field(example=None)
+    "Format of the data."
+    frequency: str | None = Field(default=None)
+    "Time frequency requested from the dataset. Must be null when using trajectory (forecast) datasets."
+    datasets: dict[str, DatasetDataSchema] | None = None
+    "Dictionary mapping dataset names to their configurations."

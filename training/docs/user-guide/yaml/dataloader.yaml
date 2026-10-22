@@ -1,0 +1,31 @@
+dataset: ${system.input.dataset}
+
+training:
+  datasets:
+    your_dataset_name:
+      dataset_config:
+        dataset: ${dataloader.dataset}
+        frequency: ${data.frequency}
+        drop: []
+      start: null
+      end: 2020
+
+validation:
+  datasets:
+    your_dataset_name:
+      dataset_config:
+        dataset: ${dataloader.dataset}
+        frequency: ${data.frequency}
+        drop: []
+      start: 2021-01-01
+      end: 2021
+
+test:
+  datasets:
+    your_dataset_name:
+      dataset_config:
+        dataset: ${dataloader.dataset}
+        frequency: ${data.frequency}
+        drop: []
+      start: 2022-01
+      end: null

@@ -1,0 +1,859 @@
+##########
+ Training
+##########
+
+The Anemoi Training module is the heart of the framework where machine
+learning models for weather forecasting are trained. This section will
+guide you through the entire training process, from setting up your data
+to configuring your model and executing the training pipeline.
+
+*************
+ Setup Steps
+*************
+
+Anemoi Training requires two primary components to get started:
+
+Step 1 and 2:
+=============
+
+#. **Graph Definition from Anemoi Graphs:** This defines the structure
+   of your machine learning model, including the layers, connections,
+   and operations that will be used during training.
+
+#. **Dataset from Anemoi Datasets:** This provides the training data
+   that will be fed into the model. The dataset should be pre-processed
+   and formatted according to the specifications of the Anemoi Datasets
+   module.
+
+These 2 steps are outlined in :ref:`prep-training-components`.
+
+Step 3: Configure the Training Process
+======================================
+
+Once your graph definition and dataset are ready, you can configure the
+training process. Anemoi Training allows you to adjust various
+parameters such as learning rate, batch size, number of epochs, and
+other hyperparameters that control the training behavior.
+
+To configure the training:
+
+-  Specify the training parameters in your configuration file or through
+   the command line interface.
+-  Replace all "missing" values in config `???` with the appropriate
+   values for your training setup.
+-  Choose the task (see :doc:`tasks`), training method
+   (see :doc:`training-methods`), and model type from :ref:`Models <Models>`.
+-  Optionally, customize additional components like the normaliser or
+   optimization strategies to enhance model performance.
+
+*****************
+ Parallelization
+*****************
+
+Anemoi Training supports different parallelization strategies based on
+the training task (see :ref:`Strategy <strategy target>`):
+
+-  **DDPGroupStrategy**: Used for deterministic training tasks
+-  **DDPEnsGroupStrategy**: Used for ensemble training tasks
+
+These strategies have to be set depending on the model task specified in
+the configuration.
+
+Step 4: Set Up Experiment Tracking (Optional)
+=============================================
+
+Experiment tracking is an essential aspect of machine learning
+development, allowing you to keep track of various runs, compare model
+performances, and reproduce results. Anemoi Training can be easily
+integrated with popular experiment tracking tools like **TensorBoard**,
+**MLflow** or **Weights & Biases (W&B)**.
+
+These different tools provide various features such as visualizing
+training metrics, logging hyperparameters, and storing model
+checkpoints. You can choose the tool that best fits your workflow and
+set it up to track your training experiments.
+
+To set up experiment tracking:
+
+#. Install the desired experiment tracking tool (e.g., TensorBoard,
+   MLflow, or W&B).
+#. Configure the tool in your training configuration file or through the
+   command line interface.
+#. Start the experiment tracking server and monitor your training runs
+   in real-time.
+
+****************************
+ Reproducibility and Seeding
+****************************
+
+Anemoi Training seeds the random number generators used during training
+to control stochastic parts of a run. This helps repeat experiments, but
+it does not guarantee exact reproducibility across hardware, software
+versions, or distributed executions because floating-point numerics and
+parallel reductions can still differ slightly.
+
+-  Set ``ANEMOI_BASE_SEED`` explicitly if you want a fixed base seed for
+   a run.
+-  If ``ANEMOI_BASE_SEED`` is not set, Anemoi Training uses
+   ``SLURM_JOB_ID`` when running inside a SLURM job.
+-  If neither value is available, Anemoi Training falls back to ``42``.
+
+Anemoi Training derives unsigned 32-bit runtime seeds from the selected base seed
+for the trainer, model communication groups, and data-loading epochs. Both
+the base seed and the derived trainer seed are stored in the checkpoint
+metadata (as ``base_seed`` and ``seed``); the derived trainer seed is also
+logged during training. To reuse the same seed derivation after a restart, set
+``ANEMOI_BASE_SEED`` to the stored ``base_seed``.
+
+``persistent_workers`` controls whether dataloader worker processes remain alive
+between epochs. It defaults to ``true`` to avoid starting new workers every epoch
+during standard training.
+
+The dataloader epoch is also stored in training checkpoints. When
+``dataloader.persistent_workers`` is ``false``, workers are restarted every
+epoch. Restarting from a checkpoint saved at the end of an epoch with the same
+base seed, data, dataloader configuration, and distributed configuration then
+produces the same shuffle as uninterrupted training.
+
+Anemoi automatically sets ``persistent_workers`` to ``false`` when the rollout
+changes between epochs (``rollout.epoch_increment > 0``), so that new workers
+receive the updated rollout.
+
+The workers' random number generator state is not stored in checkpoints.
+Consequently, when ``persistent_workers`` is ``true``, a restarted job does not
+continue the same shuffle sequence as an uninterrupted run, even when it uses the
+same base seed.
+
+With ``persistent_workers`` set to ``true``, repeating a training run split
+across multiple jobs produces the same shuffle sequence if the jobs restart from
+checkpoints saved at the end of the same epochs and use the same base seed, data,
+dataloader configuration, and distributed configuration. However, this sequence
+differs from running the same number of epochs in one uninterrupted job.
+
+Anemoi does not store a dataloader's position within an epoch. A checkpoint
+written during an epoch therefore cannot resume the exact data sequence at the
+next batch and may repeat or skip samples. Use checkpoints saved at the end of an
+epoch and set ``persistent_workers`` to ``false`` when the data sequence must match
+uninterrupted training.
+
+The same data shuffling does not necessarily make the complete training run
+exactly reproducible. The random number generators used by stochastic parts of
+the model are seeded at job startup, but their current state is not stored in
+checkpoints. In addition, some GPU kernels used by the model may also produce
+results that are not bitwise identical between runs.
+
+Step 5: Execute Training
+========================
+
+With everything set up, you can now execute the training process. Anemoi
+Training will use the graph definition and dataset to train your model
+according to the specified configuration.
+
+To execute training:
+
+-  Run the training command given below, ensuring that all paths to the
+   graph definition and dataset are correctly specified.
+-  Monitor the training process, adjusting parameters as needed to
+   optimize model performance.
+-  Upon completion, the trained model will be registered and stored for
+   further use.
+
+Make sure you have a GPU available and simply call:
+
+.. code:: bash
+
+   anemoi-training train
+
+.. _restart target:
+
+**************
+ Data Routing
+**************
+
+Anemoi Training uses the Anemoi Datasets module to load the data.
+
+Anemoi training implements data routing, in which you can specify which
+variables are used as ``forcings``; used as input only, and which
+variables are as ``diagnostics``; appear as output only and to be
+predicted by the model. All remaining variables will be treated as
+``prognostic``, i.e. they appear as both inputs and outputs.
+
+``Forcings`` are variables such as solar insolation or land-sea-mask.
+These would make little sense to predict as they are external to the
+model. These can be static (like the land-sea-mask) or dynamic (like
+solar insolation). Note within anemoi, forcing does not have the
+classical NWP meaning of external variables which impact the model, such
+as wind forcing applied to an ocean model. Instead, forcing here refers
+to any variable which is an input only. In some cases this includes
+'traditional forcing', alongside other variables.
+
+``Diagnostics`` includes the variables like precipitation that we want
+to predict, but which may not be available in forecast step zero due to
+technical limitations. These can aso include derived quantities which we
+wish to train the model to predict directly, but do not want to use as
+inputs.
+
+``Prognostic`` variables are the variables like temperature or humidity
+that we want to predict and appear as both inputs and outputs.
+
+The user can specify the routing of the data for each dataset separately
+by setting the ``config.data.datasets.your_dataset_name.forcing`` and
+``config.data.datasets.your_dataset_name.diagnostic``. These are
+named strings, as Anemoi datasets enables us to address variables by
+name. Any variable in the dataset which is not listed as either forcing
+or diagnostic (or dropped, see :ref:`Dataloader <Dataloader>` below),
+will be classed as a prognostic variable.
+
+.. code:: yaml
+
+   data:
+      datasets:
+         your_dataset_name:
+            forcing:
+               - solar_insolation
+               - land_sea_mask
+            diagnostic:
+               - total_precipitation
+
+************
+ Dataloader
+************
+
+Anemoi uses the Dataloader class from `PyTorch`_ to load the input batches for the upcoming training steps. The data is asynchronously prefetched from a filesystem and stored in CPU memory until a batch is required by the GPU.
+
+.. _PyTorch: https://docs.pytorch.org/docs/stable/data.html#single-and-multi-process-data-loading
+
+The dataloader config exposes configuration options of the underlying pytorch dataloaders. By default, ``num_workers`` dataloading processes are created for every GPU. Each worker will prefetch a maximum of ``prefetch_factor`` batches.
+
+
+.. code:: yaml
+
+   num_workers:
+      training: 8
+      validation: 8
+      test: 8
+   batch_size:
+      training: 2
+      validation: 4
+      test: 4
+
+   limit_batches:
+      training: null
+      validation: null
+      test: 20
+
+   prefetch_factor:
+      training: 2
+      validation: 2
+      test: 2
+
+   persistent_workers: true
+   multiprocessing_context: None
+
+
+``persistent_workers`` defaults to ``true`` to avoid the worker startup cost
+between epochs. When the rollout changes between epochs, Anemoi automatically
+sets it to ``false`` so that new workers receive the updated rollout state. For a
+fixed rollout (``rollout.epoch_increment == 0``), set it to ``false`` explicitly
+if a run restarted from a checkpoint saved at the end of an epoch must reproduce
+the uninterrupted data shuffle. This requires the base seed and the data,
+dataloader, and distributed configurations to remain unchanged. With persistent
+workers, their random number generator state cannot be restored after restarting
+a job.
+
+Determining the optimal number of workers depends on your system and training setup. More dataloader processes can increase your filesystem bandwidth, at the cost of higher CPU memory usage. Higher source resolutions and larger batch sizes increase the memory required per worker. When the available CPU memory is not sufficient for the requested number of workers, your training run will crash. One can use the `anemoi dataloader benchmark`_ to quickly test different setups and determine the optimal configuration for your training setup.
+
+.. _anemoi dataloader benchmark: https://github.com/ecmwf/anemoi-core/pull/818
+
+The config entry ``limit_batches`` is an option to limit the number of batches loaded by the dataloader. This can be useful for testing and debugging purposes, allowing you to run a shorter training loop without processing the entire dataset.
+
+The config entry ``multiprocessing_context`` allows you to specify the multiprocessing context for the dataloader workers.
+The default is ``None``, which uses the default context for your system. Typically, there is no need to change this, but in some cases, such as when using certain libraries or running on specific platforms, you may need to set it to ``fork`` or ``spawn`` to avoid issues with multiprocessing.
+
+.. note::
+
+   When training directly from S3, it is required to use the ``spawn`` multiprocessing context to avoid issues with the underlying library used to access S3.
+
+
+The dataloader file also describes the files used for training,
+validation and testing, and the datasplit For machine learning, we
+separate our data into: training data, used to train the model;
+validation data, used to assess various version of the model throughout
+the model development process; and test data, used to assess a final
+version of the model. Best practice is to separate the data in time,
+ensuring the validation and test data are suitably independent from the
+training data.
+
+For each dataset `your_dataset_name`, we define the start and end
+time of each section of the data.
+This can be given as a full date, or just the year, or year and month,
+in these cases the first of the month/first of the year is used.
+
+We also define the dataset reader options under ``dataset_config``.
+This includes the dataset source (``dataset``) and optional keys such as
+``frequency``, ``drop``, ``select`` and ``statistics``. These can be set
+separately for the different training/validation/test parts of the
+dataset `your_dataset_name`, for example, if test data is stored in a
+different file.
+
+By default, every variable within the dataset is used. If this is not
+desired, variables can be listed within ``drop`` and they won't be used.
+Conversely, if only a few variables from the file are needed ``select``
+can be used in place of drop, and only the listed variables are used.
+The same overall set of variables must be used throughout training,
+validation and test. If using different files, which contain different
+variables, the items listed in drop/select may vary.
+
+.. literalinclude:: yaml/dataloader.yaml
+   :language: yaml
+
+
+
+
+
+***************
+ Normalisation
+***************
+
+Machine learning models are sensitive to the scale of the input data. To
+ensure that the model can learn effectively, it is important to
+normalise the input data, so all variables exhibit a similar range. This
+ensures variables have comparable contributions to the loss function,
+and enables the model to learn effectively.
+
+The nornmaliser is one of many 'preprocessors' within anemoi, it
+implements multiple strategies that can be applied to the data using the
+config. Currently, the normaliser supports the following strategies:
+
+-  ``none``: No normalisation is applied.
+-  ``mean-std``: Data is normalised by subtracting the mean and dividing
+   by the standard deviation
+-  ``std``: Data is normalised by dividing by the standard deviation.
+-  ``min-max``: Data is normalised by substracting the min value and
+   dividing by the range.
+-  ``max``: Data is normalised by dividing by the max value.
+
+Values like the land-sea-mask do not require additional normalisation as
+they already span a range between 0 and 1. Variables like temperature or
+humidity are usually normalised using ``mean-std``. Some variables like
+the geopotential height should be max normalised, so the 'zero' point
+and the proportional distance from this point is retained,
+
+The user can specify the normalisation strategy by choosing a default
+method, and additionally specifying specific cases for certain variables
+under ``config.data.datasets.your_dataset_name.processors.normalizer.config``:
+
+.. code:: yaml
+
+   data:
+      datasets:
+         your_dataset_name:
+            processors:
+               normalizer:
+                  _target_: anemoi.models.preprocessing.normalizer.InputNormalizer
+                  config:
+                     default: mean-std
+                     none:
+                        - land_sea_mask
+                     max:
+                        - geopotential_height
+
+An additional option in the normaliser overwrites statistics of specific
+variables onto others. This is primarily used for convective
+precipitation (cp), which is a fraction of total precipitation (tp), by
+overwriting the cp statistics with the tp statistics, we ensure the
+fractional relationship remains intact in the normalised space. Note
+that this is a design choice.
+
+.. code:: yaml
+
+   data:
+      datasets:
+         your_dataset_name:
+            processors:
+               normalizer:
+                  config:
+                     remap:
+                        cp: tp
+
+*********
+ Imputer
+*********
+
+It is important to have no missing values (e.g. NaNs) in the data when
+training a model as this will break the backpropagation of gradients and
+cause the model to predict only NaNs. For fields which contain missing
+values, we provide options to replace these values via an "imputer".
+During training NaN values are replaced with the specified value for the
+field. The default imputer is "none", which means no imputation is
+performed. The user can specify the imputer for each dataset by setting
+``datasets.your_dataset_name.processors.imputer`` under the
+``data/zarr.yaml`` file. It is common to impute with the mean value,
+ensuring that the variable value over NaNs becomes zero after mean-std
+normalisation. Another option is to impute with a given constant.
+
+
+.. code:: yaml
+
+   datasets:
+      your_dataset_name:
+         imputer:
+            default: "none"
+            mean:
+               - 2t
+
+         processors:
+            imputer:
+               _target_: anemoi.models.preprocessing.imputer.InputImputer
+               config: ${data.datasets.your_dataset_name.imputer}
+
+****************
+ Loss Functions
+****************
+
+Anemoi Training supports various loss functions for different training
+tasks and easily allows for custom loss functions to be added.
+
+.. code:: yaml
+
+   training_loss:
+      datasets:
+         your_dataset_name:
+            _target_: anemoi.training.losses.mse.WeightedMSELoss
+            # class kwargs
+
+The choice of loss function depends on the model task and the desired
+properties of the forecast and is configured for each dataset separately.
+
+For ensemble training, use :class:`anemoi.training.losses.CRPS`. See
+:ref:`ensemble-crps-training` for the complete setup and :ref:`Losses`
+for the available loss options.
+
+.. _loss-function-scaling:
+
+***********************
+ Loss function scaling
+***********************
+
+It is possible to change the weighting given to each of the variables in
+the loss function by changing the default `pressure_level` and
+`general_variable` scalers. They are by default applied to the fields
+before applying the training loss function and defined in the
+configuration `training.scalers`.
+
+While in the `general_variable` scaler each variable is given a
+weighting, the `pressure_level` scaler is applied to the pressure levels
+variables with respect to the pressure level. For almost all
+applications, upper atmosphere pressure levels should be given lower
+weighting than the lower atmosphere pressure levels (i.e. pressure
+levels nearer to the surface). By default anemoi-training uses a ReLU
+Pressure Level scaler with a minimum weighting of 0.2 (i.e. no pressure
+level has a weighting less than 0.2), defined in class
+`anemoi.training.losses.scalers.ReluVariableLevelScaler`.
+
+.. code:: yaml
+
+   datasets:
+      your_dataset_name:
+         general_variable:
+            _target_: anemoi.training.losses.scalers.GeneralVariableLossScaler
+            weights:
+               default: 1
+               t: 6
+               z: 12
+               10u: 0.1
+               10v: 0.1
+               2d: 0.5
+               tp: 0.025
+               cp: 0.0025
+
+.. code:: yaml
+
+   datasets:
+      your_dataset_name:
+         pressure_level:
+            # Variable level scaler to be used
+            _target_: anemoi.training.losses.scalers.ReluVariableLevelScaler
+            group: pl
+            y_intercept: 0.2
+            slope: 0.001
+
+The loss is also scaled by assigning a weight to each node on the output
+grid. These weights are calculated during graph-creation and stored as
+an attribute in the graph object. Node weighting is applied via the
+``node_weights`` scaler defined under
+``config.training.scalers.<dataset_name>.node_weights``; set
+``nodes_attribute_name`` to the graph attribute to use as weights, and
+reference the scaler from a loss by including ``node_weights`` in its
+``scalers:`` list. By default anemoi-training uses area weighting
+(``nodes_attribute_name: area_weight``), where each node is weighted
+according to the size of the geographical area it represents.
+
+It is also possible to rescale the weight of a subset of nodes after
+they are loaded from the graph using the class
+`anemoi.training.losses.scalers.ReweightedGraphNodeAttributeScaler`.
+
+
+***************
+ Learning rate
+***************
+
+Anemoi training uses the ``CosineLRScheduler`` from ``timm`` as its
+default learning rate scheduler. Docs for this scheduler can be found here
+https://github.com/huggingface/pytorch-image-models/blob/main/timm/scheduler/cosine_lr.py
+The user can configure the maximum learning rate by setting
+``config.training.optimization.lr``. Note that this learning rate is
+the local (per-GPU) rate; it is scaled by the number of GPUs at
+runtime with:
+
+.. code:: yaml
+
+   global_learning_rate = config.training.optimization.lr * num_gpus_per_node * num_nodes / gpus_per_model
+
+The user can also control the rate at which the learning rate decreases
+by setting the total number of scheduler steps -
+``config.training.optimization.lr_scheduler.t_initial`` and the minimum
+learning rate reached -
+``config.training.optimization.lr_scheduler.lr_min``. Note that the
+minimum learning rate is not scaled by the number of GPUs. The user can
+also control the warmup period by setting
+``config.training.optimization.lr_scheduler.warmup_t``. If the warmup
+period is set to 0, the learning rate will start at the maximum
+learning rate. The default (see
+``config/training/optimization/lr_scheduler/cosine_scheduler.yaml``)
+uses a warmup period of 1000 steps.
+
+**************************
+ Restarting a training run
+**************************
+
+It may be necessary at certain points to restart the model training,
+i.e. because the training has exceeded the time limit on an HPC system
+or because the user wants to fine-tune the model from a specific point
+in the training.
+
+This can be done by setting ``config.training.run_id`` in the config
+file to be the *run_id* of the run that is being restarted. In this case
+the new checkpoints will go in the same folder as the old checkpoints.
+If the user does not want this then they can instead set
+``config.training.fork_run_id`` in the config file to the *run_id* of
+the run that is being restarted. In this case the old run will be
+unaffected and the new checkpoints will go in to a new folder with a new
+run_id. The user might want to do this if they want to start multiple
+new runs from 1 old run.
+
+The above will restart the model training from where the old run
+finished training. It's also possible to restart the model training from
+a specific checkpoint. This can either be a checkpoint from the same run
+or a checkpoint from a different run that you have run in the past or
+that you using for transfer learning. To do this, set
+``config.system.input.warm_start`` to be the path to the checkpoint they
+want to restart from.
+
+The above can be adapted depending on the use case and taking advantage
+of hydra, you can also reuse ``config.training.run_id`` or
+``config.training.fork_run_id`` to define the path to the checkpoint.
+
+Anemoi does not store the dataloader's position within an epoch. When restarting
+from a checkpoint written during an epoch, use ``training.max_steps`` to
+prescribe the total number of optimization steps instead of relying on
+``max_epochs`` as a measure of how much data was processed. The standard training
+configurations already use a finite ``max_steps`` with ``max_epochs: null``. This
+keeps the number of optimizer steps fixed.
+
+When the data sequence must match uninterrupted training, use a checkpoint saved
+at the end of an epoch and set ``dataloader.persistent_workers`` to ``false``.
+Anemoi sets it to ``false`` automatically when the rollout changes between
+epochs; for a fixed rollout, set it explicitly. Disabling persistent workers adds
+worker startup costs at the beginning of every epoch.
+
+*********
+ Rollout
+*********
+
+Rollout training is when the model is iterated within the training
+process, producing forecasts for many future time steps from its own
+predictions. The loss is calculated on every step in the rollout period
+and averaged, and gradients flow through the whole forecast chain when
+backward is called.
+
+For example, with ``rollout=3`` and a 6-hour model timestep, the model
+autoregressively predicts t+6 h, then uses that prediction as input to
+predict t+12 h, and again to predict t+18 h. The loss is averaged across
+all three steps: ``(loss(t+6h) + loss(t+12h) + loss(t+18h)) / 3``.
+Training with rollout has been shown to improve stability in long
+autoregressive inference runs, because the training objective more closely
+resembles the multi-step forecasting use case.
+
+In most cases, in the first stage of training, the model is trained for
+many epochs to predict only one step (i.e. ``rollout.maximum = 1``). Once this
+is completed, there is a second stage of training, which uses *rollout*
+to fine-tune the model error at longer leadtimes. The model begins with
+a rollout loss defined by ``rollout.start``, usually 1, and then every n
+epochs (defined by ``rollout.epoch_increment``) the rollout value increases
+up until ``rollout.maximum``.
+
+.. code:: yaml
+
+   rollout:
+      start: 1
+      # increase rollout every n epochs
+      epoch_increment: 1
+      # maximum rollout to use
+      maximum: 12
+
+This two stage approach requires the model training to be restarted
+after stage one, see :ref:`restart target` below. The user should make
+sure to set ``config.training.run_id`` equal to the run-id of the first
+stage of training.
+
+Note, for many purposes, it may make sense for the rollout stage (stage
+two) to be performed at the minimum learning rate throughout and for the
+number of batches to be reduced (using
+``config.dataloader.limit_batches.training``) to prevent overfitting to
+specific timesteps.
+
+Restarting rollout training
+===========================
+
+Every Forecaster checkpoint stores the task rollout state: the current
+``rollout.step`` and the last epoch that triggered an increment. This also
+applies when the rollout step is 1 or the rollout is fixed. The dataloader epoch
+is also stored.
+
+When using rollout training with ``rollout.epoch_increment > 0``, extra
+care is required when restarting an interrupted run.
+
+As described under `Restarting a training run`_, only checkpoints saved at the
+end of an epoch can reproduce the uninterrupted data sequence.
+
+The recommended restart recipe is:
+
+1. Restart from a checkpoint saved at the end of an epoch.
+2. Keep ``rollout.start``, ``epoch_increment``, and ``maximum``
+   **unchanged** in your configuration.
+3. Use non-persistent dataloader workers. Anemoi applies this automatically
+   when ``rollout.epoch_increment > 0``.
+4. Reuse the original ``ANEMOI_BASE_SEED``, dataloader configuration, and
+   distributed configuration.
+5. Ensure that ``training.run_id`` is set to the run ID of the interrupted
+   job.
+
+By default, Anemoi saves each epoch checkpoint after validation. At that point,
+the rollout and dataloader epoch have not yet advanced. When training resumes,
+Lightning first runs the ``on_train_epoch_end`` hook. This advances both values
+before new workers start.
+
+Anemoi can also save a final checkpoint when training ends, after this hook has
+run. That checkpoint stores the advanced dataloader epoch and records which
+epoch last increased the rollout. Lightning may run the hook again on resume.
+The saved record prevents the rollout from increasing twice.
+
+With ``persistent_workers`` set to ``false``, the first resumed epoch uses the
+same rollout length and shuffled data order that the uninterrupted run would have
+used.
+
+.. note::
+
+   Fully resuming a training run restores the optimiser and scheduler state,
+   current rollout step, and dataloader epoch from the checkpoint. The saved
+   ``rollout.step`` overrides ``rollout.start`` from the current configuration.
+   Resetting the rollout step while restoring optimiser and scheduler state is
+   not currently supported. To start from ``rollout.start`` in the current
+   configuration, set ``training.load_weights_only: true``; this restores the
+   model weights but initializes new optimiser and scheduler state from the
+   current configuration.
+
+*******************
+ Transfer Learning
+*******************
+
+Transfer learning allows the model to reuse knowledge from a previously
+trained checkpoint. This is particularly useful when the new task is
+related to the old one, enabling faster convergence and often improving
+model performance.
+
+To enable transfer learning, set the config.training.transfer_learning
+flag to True in the configuration file.
+
+.. code:: yaml
+
+   training:
+      # start the training from a checkpoint of a previous run
+      fork_run_id: ...
+      load_weights_only: True
+      transfer_learning: True
+
+When this flag is active and a checkpoint path is specified in
+``config.system.input.warm_start`` or ``self.last_checkpoint``, the system loads
+the pre-trained weights using the `transfer_learning_loading()` function.
+This approach ensures only compatible weights are loaded and mismatched
+layers are handled appropriately.
+
+For example, transfer learning might be used to adapt a weather
+forecasting model trained on one geographic region to another region
+with similar characteristics.
+
+.. _variable-compatibility-checks:
+
+*******************************
+ Variable Compatibility Checks
+*******************************
+
+When loading a checkpoint (for transfer learning, fine-tuning, or
+resuming a run), Anemoi checks that the variable metadata in the
+checkpoint matches the current dataset — for example that units have
+not changed. The same check is applied at training start between any
+predicted variable and its paired target variable in the loss function.
+
+Both checks respect a ``check_variables_compatibility`` configuration
+block. Each field can be set to ``true`` to suppress the check for all
+variables, or to a list of variable names to suppress it only for those
+variables.
+
+**Checkpoint vs. current dataset** (resuming / fine-tuning)
+
+Configure this at ``training.check_variables_compatibility``:
+
+.. code:: yaml
+
+   training:
+      check_variables_compatibility:
+        ignore_units: false           # true, or [var1, var2, ...]
+        ignore_period: false          # true, or [var1, var2, ...]
+        ignore_time_processing: false # true, or [var1, var2, ...]
+        ignore_type_of_level: false   # true, or [var1, var2, ...]
+
+**Predicted vs. target variables in the loss** (e.g. ``tp`` → ``imerg``)
+
+This check runs on every training run, not only when resuming from a
+checkpoint. Configure it directly on the loss entry that defines the
+pairing:
+
+.. code:: yaml
+
+   training:
+      training_loss:
+        datasets:
+          data:
+            _target_: anemoi.training.losses.MAELoss
+            scalers: [node_weights]
+            predicted_variables: [tp]
+            target_variables: [imerg]
+            check_variables_compatibility:
+              ignore_units: false   # true, or [tp]
+              ignore_period: false  # true, or [tp]
+
+
+****************
+ Model Freezing
+****************
+
+Model freezing is a technique where specific parts (submodules) of a
+model are excluded from training. This is useful when certain parts of
+the model have been sufficiently trained or should remain unchanged for
+the current task.
+
+To specify which submodules to freeze, use the
+``config.training.submodules_to_freeze`` field in the configuration. List
+the names of submodules to be frozen. During model initialization, these
+submodules will have their parameters frozen, ensuring they are not
+updated during training.
+
+For example, if you have a pre-trained model on a 'global' dataset and
+want to train a new decoder with the previous model's parameters frozen,
+you would specify the following configuration to freeze the trainable
+parameters of the processor, as well as those of the 'global' encoder and
+decoder.
+
+.. code:: yaml
+
+   training:
+      # start the training from a checkpoint of a previous run
+      fork_run_id: ...
+      load_weights_only: True
+
+      submodules_to_freeze:
+         - encoder.global
+         - processor
+         - decoder.global
+
+Freezing can be particularly beneficial in scenarios such as fine-tuning
+when only specific components (e.g., the encoder, the decoder) need to
+adapt to a new task while keeping others (e.g., the processor) fixed.
+
+****************************
+ Precision and BLAS Backend
+****************************
+
+Anemoi supports Lightning's native mixed precision training as well as the option to select a preferred BLAS backend
+to be used by PyTorch. For example:
+
+.. code:: yaml
+
+   training:
+      precision: bf16-mixed
+      preferred_blas_backend: "cublas"
+
+Note that both entries are optional and can be left unspecified. The default precision is ``f16-mixed`` while the BLAS backend will fall back to the
+default selection of PyTorch.
+
+******************
+ Weight Averaging
+******************
+
+Weight averaging is a technique to improve model generalization by
+averaging model weights during training. Anemoi Training provides its own
+weight-averaging callbacks that wrap PyTorch Lightning's
+``WeightAveraging`` infrastructure with pair parameters and buffers
+*by name* rather than positionally.
+
+Using the stock ``pytorch_lightning.callbacks.*WeightAveraging`` classes
+directly will crash or silently mis-pair tensors when used with:
+
+-  **Imputers** (e.g. ``ConstantImputer``), which register scratch
+   buffers whose shapes change on the first forward pass.
+-  **Updating loss scalers** (e.g. ``NaNMaskScaler``), which re-register
+   scaler buffers every batch via ``ScaleTensor.update_scaler`` —
+   shuffling the buffer order in the live model relative to the averaged
+   model's snapshot.
+
+A warning will be logged if the stock PyTorch Lightning weight-averaging
+callbacks are used, recommending the anemoi variants instead.
+
+The supported methods are:
+
+-  **Exponential Moving Average (EMA)**: Maintains an exponential moving
+      average of model weights, which can lead to smoother convergence
+      and better generalization.
+
+      .. code:: yaml
+
+         weight_averaging:
+            _target_: anemoi.training.diagnostics.callbacks.weight_averaging.EMAWeightAveraging
+            decay: 0.999
+            update_every_n_steps: 1
+            update_starting_at_step: null
+            update_starting_at_epoch: null
+
+
+-  **Stochastic Weight Averaging (SWA)**: Averages weights from multiple
+      points along the training trajectory, typically resulting in wider
+      optima and improved generalization.
+
+      .. code:: yaml
+
+         weight_averaging:
+            _target_: anemoi.training.diagnostics.callbacks.weight_averaging.SWAWeightAveraging
+            update_every_n_steps: 1
+            update_starting_at_step: null
+            update_starting_at_epoch: null
+
+
+By default, weight averaging is disabled. To explicitly disable it or to
+override a parent configuration, set ``weight_averaging`` to null.
+
+.. note::
+
+   Weight averaging is only supported in PyTorch Lightning 2.6 and later
+   versions.

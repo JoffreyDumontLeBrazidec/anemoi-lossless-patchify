@@ -1,0 +1,16 @@
+nodes:
+  data:
+    node_builder:
+      _target_: anemoi.graphs.nodes.AnemoiDatasetNodes
+      dataset:
+        cutout:
+          - dataset: regional-dataset.zarr
+            thinning: 25
+          - dataset: /path/to/global-dataset.zarr
+        adjust: all
+        min_distance_km: 10
+        max_distance_km: null
+    attributes: ...
+  hidden: ...
+
+edges: ...

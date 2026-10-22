@@ -1,0 +1,1032 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+Please add your functional changes to the appropriate section in the PR.
+Keep it human-readable, your future self will thank you!
+
+## [0.17.0](https://github.com/ecmwf/anemoi-core/compare/training-0.16.0...training-0.17.0) (2026-09-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* **configs:** expand configurability for models with multiple encoders/decoders ([#1229](https://github.com/ecmwf/anemoi-core/issues/1229))
+
+### Features
+
+* **configs:** Expand configurability for models with multiple encoders/decoders ([#1229](https://github.com/ecmwf/anemoi-core/issues/1229)) ([98a16a0](https://github.com/ecmwf/anemoi-core/commit/98a16a05fe28e6ef98647bca910dbeca4fcbe729))
+* **training:** Flexible timestepping for forecaster ([#1070](https://github.com/ecmwf/anemoi-core/issues/1070)) ([fdeb9cf](https://github.com/ecmwf/anemoi-core/commit/fdeb9cf90203e3aa55b45ea6da6595f81c0c7a32))
+* **training:** Graph scores ([#1268](https://github.com/ecmwf/anemoi-core/issues/1268)) ([11e8498](https://github.com/ecmwf/anemoi-core/commit/11e8498e4b3fa38c32e80089f521387f7d2f19ec))
+* **training:** Strategy distribute by 1 ([#1346](https://github.com/ecmwf/anemoi-core/issues/1346)) ([3bf1a70](https://github.com/ecmwf/anemoi-core/commit/3bf1a707ba39dd132a14a4d827cf3ca62e587a24))
+
+
+### Bug Fixes
+
+* Circular import ([#1322](https://github.com/ecmwf/anemoi-core/issues/1322)) ([89036bc](https://github.com/ecmwf/anemoi-core/commit/89036bc84623bb50efbb5af163099cb390b42b0b))
+* **documentation, training:** Clean-up of graph scores and fix documentation ([#1338](https://github.com/ecmwf/anemoi-core/issues/1338)) ([5aa6585](https://github.com/ecmwf/anemoi-core/commit/5aa658592332f4ccf67d70b8b11d02bc6bf16b24))
+* **training:** Honour diagnostics.enable_checkpointing in the trainer ([#1332](https://github.com/ecmwf/anemoi-core/issues/1332)) ([2236216](https://github.com/ecmwf/anemoi-core/commit/2236216eee65f5979f4f85e65b30be3849fa7cb1))
+* **training:** Restore rollout and dataloader epoch on restart ([#1339](https://github.com/ecmwf/anemoi-core/issues/1339)) ([c6d79c1](https://github.com/ecmwf/anemoi-core/commit/c6d79c161a4fdc919bba7aa11515affb2eea92d6))
+
+
+### Performance Improvements
+
+* **training:** Use tensor.sum() on the scaling mask in ReweightedGraphNodeAttributeScaler ([#1328](https://github.com/ecmwf/anemoi-core/issues/1328)) ([ce8d0d6](https://github.com/ecmwf/anemoi-core/commit/ce8d0d6ea75f0f5925b94f40380af4b2118f5e62))
+
+
+### Reverts
+
+* **training:** "feat: reuse processing callbacks ([#1213](https://github.com/ecmwf/anemoi-core/issues/1213))" ([#1319](https://github.com/ecmwf/anemoi-core/issues/1319)) ([93476b7](https://github.com/ecmwf/anemoi-core/commit/93476b7a6ba35e1f0914b194f7971654b3d1e66b))
+
+## [0.16.0](https://github.com/ecmwf/anemoi-core/compare/training-0.15.0...training-0.16.0) (2026-08-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* **training:** aggregate multiscale loss outputs ([#1265](https://github.com/ecmwf/anemoi-core/issues/1265))
+* **models,training:** universal loss scalers for spectral losses ([#1253](https://github.com/ecmwf/anemoi-core/issues/1253))
+* refactor callback interface to introduce pluggable system and evaluation module ([#1241](https://github.com/ecmwf/anemoi-core/issues/1241))
+
+### Features
+
+* Create and ship py.typed ([#1249](https://github.com/ecmwf/anemoi-core/issues/1249)) ([d0cfe4c](https://github.com/ecmwf/anemoi-core/commit/d0cfe4c88198d0aa9f9acf47009e4822734731b0))
+* Log accuracy testing to testing server ([#1256](https://github.com/ecmwf/anemoi-core/issues/1256)) ([e38e2c5](https://github.com/ecmwf/anemoi-core/commit/e38e2c5696f96a4ab6f00d6376f96b109e47228b))
+* **models,training:** Universal loss scalers for spectral losses ([#1253](https://github.com/ecmwf/anemoi-core/issues/1253)) ([034271e](https://github.com/ecmwf/anemoi-core/commit/034271ee09348aa04dcaac60d7dfa7910965249d))
+* Refactor callback interface to introduce pluggable system and evaluation module ([#1241](https://github.com/ecmwf/anemoi-core/issues/1241)) ([d456f98](https://github.com/ecmwf/anemoi-core/commit/d456f989dd8161f1c1aec988b150412c62327e6b))
+* Weekly_bulletin ([#1260](https://github.com/ecmwf/anemoi-core/issues/1260)) ([7df32d5](https://github.com/ecmwf/anemoi-core/commit/7df32d555cc274a4c57cd65a3284f06950064ec4))
+
+
+### Bug Fixes
+
+* Forecaster and tendency statistics ([#1288](https://github.com/ecmwf/anemoi-core/issues/1288)) ([163e1ad](https://github.com/ecmwf/anemoi-core/commit/163e1add720c733d1f6c7d910699b44f68934d15))
+* **graphs:** Use weights_only=True when loading graphs in anemoi-graphs ([#1303](https://github.com/ecmwf/anemoi-core/issues/1303)) ([ab292a5](https://github.com/ecmwf/anemoi-core/commit/ab292a52ab938da491bed7fe462b70de6f332802))
+* Tendency temporal downscaler ([#1293](https://github.com/ecmwf/anemoi-core/issues/1293)) ([654f4bb](https://github.com/ecmwf/anemoi-core/commit/654f4bbd81019844f18bc1911fc6241fc761b2ac))
+* **training:** Add `base_seed` entry to metadata schema ([#1290](https://github.com/ecmwf/anemoi-core/issues/1290)) ([4485d82](https://github.com/ecmwf/anemoi-core/commit/4485d828bfea363466bdc934ccd42598e5f474a6))
+* **training:** Aggregate multiscale loss outputs ([#1265](https://github.com/ecmwf/anemoi-core/issues/1265)) ([9e34f6a](https://github.com/ecmwf/anemoi-core/commit/9e34f6a592f54f378a7b78df59160903b665e29e))
+* **training:** Clean-up after imputer fix ([#1302](https://github.com/ecmwf/anemoi-core/issues/1302)) ([81391ff](https://github.com/ecmwf/anemoi-core/commit/81391ff816bfdce21b2aa271af9ff62001461d93))
+* **training:** Expandable segments warning ([#1259](https://github.com/ecmwf/anemoi-core/issues/1259)) ([abcaf9b](https://github.com/ecmwf/anemoi-core/commit/abcaf9b5b4ae9b3b6bfc4e5b7fca9e0354dbfd88))
+* **training:** Fix race condition in benchmark tests ([#1267](https://github.com/ecmwf/anemoi-core/issues/1267)) ([361e713](https://github.com/ecmwf/anemoi-core/commit/361e7139e703dec95839ed08c4de1b4033fb8c20))
+* **training:** Handle NaN masks correctly with sharding ([#1283](https://github.com/ecmwf/anemoi-core/issues/1283)) ([d7f6233](https://github.com/ecmwf/anemoi-core/commit/d7f623353cd901298d6727d5756c02f07c9f69ef))
+* **training:** Increase checkpoint download timeout time ([#1272](https://github.com/ecmwf/anemoi-core/issues/1272)) ([ec0cbbe](https://github.com/ecmwf/anemoi-core/commit/ec0cbbea25a2808bc77e35f98a76d26e2f575c64))
+* **training:** Protect against seed overflow ([#1228](https://github.com/ecmwf/anemoi-core/issues/1228)) ([eb0f6e1](https://github.com/ecmwf/anemoi-core/commit/eb0f6e15e13f6a0d9ad5a7f6afdc7c268818595a))
+* **training:** Remove broken n_plots_per_sample option from ensemble plots ([#1275](https://github.com/ecmwf/anemoi-core/issues/1275)) ([528483f](https://github.com/ecmwf/anemoi-core/commit/528483f6542d80c28ad08259f921b1835ef54190))
+* **training:** Remove unused num_features from config and schemas ([#1306](https://github.com/ecmwf/anemoi-core/issues/1306)) ([9fe1411](https://github.com/ecmwf/anemoi-core/commit/9fe14115c67f5df24d80113ede4738f346073e1f))
+* **training:** Set default progress bar for profiler ([#1277](https://github.com/ecmwf/anemoi-core/issues/1277)) ([4dd8739](https://github.com/ecmwf/anemoi-core/commit/4dd8739b1c3fd1ce49012368eb0aba28076665d6))
+* **training:** Update accuracy test after fix to seed overflow ([#1228](https://github.com/ecmwf/anemoi-core/issues/1228)) ([#1263](https://github.com/ecmwf/anemoi-core/issues/1263)) ([d8b4feb](https://github.com/ecmwf/anemoi-core/commit/d8b4feb97f57e2783d4235b692a9fa0e98c43d53))
+
+
+### Performance Improvements
+
+* **training:** Disable broadcast buffers ([#1278](https://github.com/ecmwf/anemoi-core/issues/1278)) ([37d28df](https://github.com/ecmwf/anemoi-core/commit/37d28df472c1f59910da6a3b7e1e95348dbe98ae))
+* **training:** Minimise broadcasts from lightning checkpoints ([#1279](https://github.com/ecmwf/anemoi-core/issues/1279)) ([1ef4546](https://github.com/ecmwf/anemoi-core/commit/1ef4546bda51f1ec28b6aa6eaa08ad246c1b397c))
+* **training:** Skip redundant `advance_input` ([#1285](https://github.com/ecmwf/anemoi-core/issues/1285)) ([14040fd](https://github.com/ecmwf/anemoi-core/commit/14040fdb9b428230d0897a1234cb6058608d353c))
+
+
+### Reverts
+
+* "fix(graphs): use weights_only=True when loading graphs in anemoi-graphs" ([#1311](https://github.com/ecmwf/anemoi-core/issues/1311)) ([c30e3e8](https://github.com/ecmwf/anemoi-core/commit/c30e3e8fe304bc97b8103b86b9dbb81707bc8497))
+
+## [0.15.0](https://github.com/ecmwf/anemoi-core/compare/training-0.14.0...training-0.15.0) (2026-07-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **training:** preserve wrapped loss variable-reduction defaults when filtering variables
+* **training:** return aggregated multiscale losses and remove per-scale validation metrics
+* **training:** speedup multiscale loss ([#1212](https://github.com/ecmwf/anemoi-core/issues/1212))
+* **training:** make user-specified search path take precedence and simplify Hydra search paths hierarchy ([#1181](https://github.com/ecmwf/anemoi-core/issues/1181))
+* Forecast dataset dataloader ([#1133](https://github.com/ecmwf/anemoi-core/issues/1133))
+* **training:** parameter freezing ([#1159](https://github.com/ecmwf/anemoi-core/issues/1159))
+
+### Features
+
+* **training:** add graph-based ensemble score losses
+* **training:** add global energy scores and optional coefficient-magnitude spectral CRPS
+* Add unit check for target variables ([#1155](https://github.com/ecmwf/anemoi-core/issues/1155)) ([8f98738](https://github.com/ecmwf/anemoi-core/commit/8f98738646cea115181fb2fc2be9126bd0d99e94))
+* Callback evaluate cli ([#1153](https://github.com/ecmwf/anemoi-core/issues/1153)) ([a6ed3f0](https://github.com/ecmwf/anemoi-core/commit/a6ed3f06cda5beb32a1313bf1a04b14d462008a0))
+* Export JSON schema ([#1112](https://github.com/ecmwf/anemoi-core/issues/1112)) ([082f443](https://github.com/ecmwf/anemoi-core/commit/082f44343ab68995295f8d464c92bd8d12b3442d))
+* Forecast dataset dataloader ([#1133](https://github.com/ecmwf/anemoi-core/issues/1133)) ([7d4b5c8](https://github.com/ecmwf/anemoi-core/commit/7d4b5c82f17ecd9ec1f49d7c54fff5bc8217d4d5))
+* Make cartopy projections flexible ([#1200](https://github.com/ecmwf/anemoi-core/issues/1200)) ([979c6d5](https://github.com/ecmwf/anemoi-core/commit/979c6d57491c0e301dde1e953f65166e36e6219d))
+* Model Transformation Layer — Native PipelineStage modifiers ([#410](https://github.com/ecmwf/anemoi-core/issues/410)) ([#442](https://github.com/ecmwf/anemoi-core/issues/442)) ([6dcc870](https://github.com/ecmwf/anemoi-core/commit/6dcc870e0f8984fc11840d970f14e6b78b926885))
+* **models, training:** Introduce sharding support for spectral losses ([#1230](https://github.com/ecmwf/anemoi-core/issues/1230)) ([f1b09f1](https://github.com/ecmwf/anemoi-core/commit/f1b09f1e607e92a437f156002407be685a45529c))
+* **models:** GT processor halo exchange ([#1162](https://github.com/ecmwf/anemoi-core/issues/1162)) ([0c0ab86](https://github.com/ecmwf/anemoi-core/commit/0c0ab86f4fa64ff8444ea6f97794fd12017c16ea))
+* Projections for spectral losses ([#1087](https://github.com/ecmwf/anemoi-core/issues/1087)) ([a4ea5df](https://github.com/ecmwf/anemoi-core/commit/a4ea5df2f6281e9a706c70d379ca88c36fe31b80))
+* Reuse processing callbacks ([#1213](https://github.com/ecmwf/anemoi-core/issues/1213)) ([2a72fd8](https://github.com/ecmwf/anemoi-core/commit/2a72fd81e9d78351100ed3aa783f427308d5d68c))
+* **training:** Add --config-path to config validate and unify config composition ([#1216](https://github.com/ecmwf/anemoi-core/issues/1216)) ([7af92b6](https://github.com/ecmwf/anemoi-core/commit/7af92b61650f4bded5df565f198a628ca8cb6d6f))
+* **training:** Add --sort option to config dump ([#1238](https://github.com/ecmwf/anemoi-core/issues/1238)) ([96d9bca](https://github.com/ecmwf/anemoi-core/commit/96d9bca43debfe9f5e0a70fe63d39bb75190bbb3))
+* **training:** Ignore warmup iterations when calculating throughput ([#1254](https://github.com/ecmwf/anemoi-core/issues/1254)) ([cfd5ca2](https://github.com/ecmwf/anemoi-core/commit/cfd5ca2342d1e909bf5785c39d0356b22fbf9c86))
+* **training:** More benchmark tests ([#1225](https://github.com/ecmwf/anemoi-core/issues/1225)) ([8a9f790](https://github.com/ecmwf/anemoi-core/commit/8a9f7901d2a46fde416c6ec91d08c9031787bdb9))
+* **training:** Speedup multiscale loss ([#1212](https://github.com/ecmwf/anemoi-core/issues/1212)) ([bc89ef3](https://github.com/ecmwf/anemoi-core/commit/bc89ef3c58f2646ff3385fc6881946693e6ab732))
+* **training:** Use local synchronization for communication groups ([#1251](https://github.com/ecmwf/anemoi-core/issues/1251)) ([b44b53b](https://github.com/ecmwf/anemoi-core/commit/b44b53bdfd66c1e4ef8d28c0109da01f23704bf0))
+
+
+### Bug Fixes
+
+* Checking variable argument name ([#1205](https://github.com/ecmwf/anemoi-core/issues/1205)) ([f0b946a](https://github.com/ecmwf/anemoi-core/commit/f0b946af876360cf913951905d87916f3654d1de))
+* Config precedence ([#1218](https://github.com/ecmwf/anemoi-core/issues/1218)) ([f0e8206](https://github.com/ecmwf/anemoi-core/commit/f0e8206038a827a48b771bc6813e5bf1e972cc5e))
+* Fix integration tests with torch &gt;= 2.11 ([#1187](https://github.com/ecmwf/anemoi-core/issues/1187)) ([f23c096](https://github.com/ecmwf/anemoi-core/commit/f23c096ec9091c0ec6f84c52404e84fbca8b99a4))
+* Graph open dataset ([#1235](https://github.com/ecmwf/anemoi-core/issues/1235)) ([6278cf0](https://github.com/ecmwf/anemoi-core/commit/6278cf06c47f8d226ecad857bbc3185b0486724d))
+* **graphs:** AICON hidden to hidden topology ([#1183](https://github.com/ecmwf/anemoi-core/issues/1183)) ([ea31de5](https://github.com/ecmwf/anemoi-core/commit/ea31de5c8df7ab4d8b99c22b303208046fd498a3))
+* Remove version limit ([#1178](https://github.com/ecmwf/anemoi-core/issues/1178)) ([821b1f0](https://github.com/ecmwf/anemoi-core/commit/821b1f0ee73d1fb4310d3f8a679001697e2331f0))
+* Replace matplotlib.get_cmap ([#1186](https://github.com/ecmwf/anemoi-core/issues/1186)) ([8b7f835](https://github.com/ecmwf/anemoi-core/commit/8b7f835c9df5a4df6e713cb3b64519bb5c81584d))
+* Revert torch limit ([#1204](https://github.com/ecmwf/anemoi-core/issues/1204)) ([8308654](https://github.com/ecmwf/anemoi-core/commit/8308654424a0dca1cc28274cace3e00c21fc5088))
+* Simplify per timestep metrics ([#1173](https://github.com/ecmwf/anemoi-core/issues/1173)) ([df59ece](https://github.com/ecmwf/anemoi-core/commit/df59ece54353ea52072101e7af2dbc0876079dfe))
+* **training/profilers:** Ensure dir on multi GPU is created ([#1208](https://github.com/ecmwf/anemoi-core/issues/1208)) ([68de090](https://github.com/ecmwf/anemoi-core/commit/68de090adff5644a6b234919907dcc1d11e6cecd))
+* **training:** Add anemoi weight averaging classes in order to work with Imputers and Scalers ([#1113](https://github.com/ecmwf/anemoi-core/issues/1113)) ([1a99ae0](https://github.com/ecmwf/anemoi-core/commit/1a99ae09313f3324608ab4918e0f88505c789e08))
+* **training:** Allow mlflow filesystem tracking backend in tests ([#1180](https://github.com/ecmwf/anemoi-core/issues/1180)) ([de91091](https://github.com/ecmwf/anemoi-core/commit/de91091063c3b1ba51f78e4cc70a4c4e74133319))
+* **training:** By default, explicitly run on gpu  ([#1209](https://github.com/ecmwf/anemoi-core/issues/1209)) ([5f0971a](https://github.com/ecmwf/anemoi-core/commit/5f0971a2422985b787d239843956c8ddd1c9adc9))
+* **training:** Load model on CPU to avoid GPU OOMs ([#1145](https://github.com/ecmwf/anemoi-core/issues/1145)) ([a1036ff](https://github.com/ecmwf/anemoi-core/commit/a1036ff6e9f242394d8fc67f0be12b342144ba41))
+* **training:** Make user-specified search path take precedence and simplify Hydra search paths hierarchy ([#1181](https://github.com/ecmwf/anemoi-core/issues/1181)) ([bfc10b1](https://github.com/ecmwf/anemoi-core/commit/bfc10b1677ce49309c8e6f90b5f603da5462f097))
+* **training:** Parameter freezing ([#1159](https://github.com/ecmwf/anemoi-core/issues/1159)) ([4135153](https://github.com/ecmwf/anemoi-core/commit/4135153b6dea3cc8626652c6c3724cbfeff6531f))
+* **training:** Persist rollout step across job resume ([#1109](https://github.com/ecmwf/anemoi-core/issues/1109)) ([46ae658](https://github.com/ecmwf/anemoi-core/commit/46ae6584d7341711c21f4179217a472d16c406d3))
+* **training:** Tendency scaler timstep option fix ([#1247](https://github.com/ecmwf/anemoi-core/issues/1247)) ([70d7248](https://github.com/ecmwf/anemoi-core/commit/70d72484dfadaadf16b82f6c97cda8b567102b3e))
+* Update loss schema ([#1252](https://github.com/ecmwf/anemoi-core/issues/1252)) ([d2a9639](https://github.com/ecmwf/anemoi-core/commit/d2a96397364fe445b2ca78d6cb6898b9a121aee7))
+* Variable argument units change ([#1206](https://github.com/ecmwf/anemoi-core/issues/1206)) ([f2e3e82](https://github.com/ecmwf/anemoi-core/commit/f2e3e82be789bdbcd2bd49a4d6f1cc7aa71d9608))
+
+
+### Documentation
+
+* Update rollout documentation ([#1214](https://github.com/ecmwf/anemoi-core/issues/1214)) ([c3666b3](https://github.com/ecmwf/anemoi-core/commit/c3666b34133c049fb1b44aba2afafa1e3f45de2f))
+
+## [0.14.0](https://github.com/ecmwf/anemoi-core/compare/training-0.13.0...training-0.14.0) (2026-06-08)
+
+
+### ⚠ BREAKING CHANGES
+
+* **training, models:** add transport diffusion and stochastic interpolant ([#1096](https://github.com/ecmwf/anemoi-core/issues/1096))
+* loss NaN handling ([#1045](https://github.com/ecmwf/anemoi-core/issues/1045))
+* aggregate losses for temporal downscaler ([#1069](https://github.com/ecmwf/anemoi-core/issues/1069))
+* introduce mlp implementation for gated FFN (swiglu, ...) ([#943](https://github.com/ecmwf/anemoi-core/issues/943))
+
+### Features
+
+* Abstract asynchronous plotting executor ([#1129](https://github.com/ecmwf/anemoi-core/issues/1129)) ([f0743b7](https://github.com/ecmwf/anemoi-core/commit/f0743b78893f04bff18057b68ca81e17f3c777b4))
+* Aggregate losses for temporal downscaler ([#1069](https://github.com/ecmwf/anemoi-core/issues/1069)) ([390ce34](https://github.com/ecmwf/anemoi-core/commit/390ce34c1fbf89bf37cc8733cc500fe2bc7237ee))
+* Callbacks dependencies ([#1128](https://github.com/ecmwf/anemoi-core/issues/1128)) ([f791b75](https://github.com/ecmwf/anemoi-core/commit/f791b75d325e8fcdd9b6507510efa5cde0915d01))
+* Introduce mlp implementation for gated FFN (swiglu, ...) ([#943](https://github.com/ecmwf/anemoi-core/issues/943)) ([2ed3417](https://github.com/ecmwf/anemoi-core/commit/2ed3417906423cd8be7ee432138b94606deaacb9))
+* **models:** Use CUDA graphs to accelerate spectral transforms for reduced grids ([#974](https://github.com/ecmwf/anemoi-core/issues/974)) ([af1fc73](https://github.com/ecmwf/anemoi-core/commit/af1fc73a3b9c0a6a9d37c5cb7313a7d816a9c7e5))
+* **training, models:** Add transport diffusion and stochastic interpolant ([#1096](https://github.com/ecmwf/anemoi-core/issues/1096)) ([ef8b588](https://github.com/ecmwf/anemoi-core/commit/ef8b588db5ce52d064c97cfb47ac981fdafe0430))
+* **training:** Initial spectral AMSE implementation ([#1141](https://github.com/ecmwf/anemoi-core/issues/1141)) ([#1148](https://github.com/ecmwf/anemoi-core/issues/1148)) ([cc21d94](https://github.com/ecmwf/anemoi-core/commit/cc21d947a61313f39fb46f0b32f70bd5ea4c4bd5))
+* **training:** Load only data required for current rollout length ([#1169](https://github.com/ecmwf/anemoi-core/issues/1169)) ([8416f04](https://github.com/ecmwf/anemoi-core/commit/8416f044ba08e8f96d4d66530fd58dbd00865c9a))
+* Units check ([#1140](https://github.com/ecmwf/anemoi-core/issues/1140)) ([c23043d](https://github.com/ecmwf/anemoi-core/commit/c23043d5f3f0a7e558d25b5b249da559c663069f))
+
+
+### Bug Fixes
+
+* Asyncio loop thread management with Python 3.13 ([#1124](https://github.com/ecmwf/anemoi-core/issues/1124)) ([7c9c8aa](https://github.com/ecmwf/anemoi-core/commit/7c9c8aacd24fedb14f8fd3ca2c4ceb923f13fbc1))
+* Ensemble training shape clean-up ([#1154](https://github.com/ecmwf/anemoi-core/issues/1154)) ([ee381d3](https://github.com/ecmwf/anemoi-core/commit/ee381d3bfb1bd23e709c4482ffdd98e13a3222c5))
+* Loss NaN handling ([#1045](https://github.com/ecmwf/anemoi-core/issues/1045)) ([9377a10](https://github.com/ecmwf/anemoi-core/commit/9377a1060179bac7d823d894e2d9e97be0b53e8a))
+* **models:** Hierarchical model with multiple datasets ([#1066](https://github.com/ecmwf/anemoi-core/issues/1066)) ([987aa09](https://github.com/ecmwf/anemoi-core/commit/987aa09dba164f3f447e8391a2ea7a3c074fed4e))
+* **training:** Enable coupling of validation rollout to training rollout ([#1136](https://github.com/ecmwf/anemoi-core/issues/1136)) ([9f9536a](https://github.com/ecmwf/anemoi-core/commit/9f9536ab8322720810633b4a40df2f069d4bd16f))
+* **training:** Gather sharded batches if loss does not support sharding ([#1130](https://github.com/ecmwf/anemoi-core/issues/1130)) ([921358c](https://github.com/ecmwf/anemoi-core/commit/921358cc6bf85ee8137a3f5922bae7e03e473096))
+
+## [0.13.0](https://github.com/ecmwf/anemoi-core/compare/training-0.12.1...training-0.13.0) (2026-05-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* **training:** Consolidate CRPS losses ([#1094](https://github.com/ecmwf/anemoi-core/issues/1094))
+* **callbacks:** add ens plot adapter and remove ensemble plot mixin ([#1061](https://github.com/ecmwf/anemoi-core/issues/1061))
+* **callbacks:** remove RolloutEvalEns ([#1081](https://github.com/ecmwf/anemoi-core/issues/1081))
+* **training:** Configurable weight averaging (exponential moving average (EMA), ...) ([#743](https://github.com/ecmwf/anemoi-core/issues/743))
+
+### Features
+
+* **callbacks:** Add ens plot adapter and remove ensemble plot mixin ([#1061](https://github.com/ecmwf/anemoi-core/issues/1061)) ([92ddccf](https://github.com/ecmwf/anemoi-core/commit/92ddccf49c67e1e3e0bbf4e56898bcd50086755c))
+* **callbacks:** Remove RolloutEvalEns ([#1081](https://github.com/ecmwf/anemoi-core/issues/1081)) ([aa00bab](https://github.com/ecmwf/anemoi-core/commit/aa00bab8785b0935c14469894e1f61780838fe8d))
+* Graph for skipped and multiscale suggestions ([#1052](https://github.com/ecmwf/anemoi-core/issues/1052)) ([a5eeaef](https://github.com/ecmwf/anemoi-core/commit/a5eeaef1615906974f684e39197f17be7fe9afb4))
+* Introduce Callbacks context ([#1014](https://github.com/ecmwf/anemoi-core/issues/1014)) ([919d9e1](https://github.com/ecmwf/anemoi-core/commit/919d9e10a287618ef109d26d0bdfe03092f53171))
+* **models:** Runtime env vars to override attention backends ([#1091](https://github.com/ecmwf/anemoi-core/issues/1091)) ([c1d8395](https://github.com/ecmwf/anemoi-core/commit/c1d83955eda1d75001d09f2b686fb0a388218ab6))
+* **training:** Configurable weight averaging (exponential moving average (EMA), ...) ([#743](https://github.com/ecmwf/anemoi-core/issues/743)) ([8713d12](https://github.com/ecmwf/anemoi-core/commit/8713d1243df0a4d51249227b1100d42c631e5415))
+* **training:** Consolidate CRPS losses ([#1094](https://github.com/ecmwf/anemoi-core/issues/1094)) ([58df693](https://github.com/ecmwf/anemoi-core/commit/58df69317eee301d56a480fa2da9251ae299e535))
+
+
+### Bug Fixes
+
+* Add missing parameters for logging hyperparameters in MlflowSchema ([#1084](https://github.com/ecmwf/anemoi-core/issues/1084)) ([ebf3a8e](https://github.com/ecmwf/anemoi-core/commit/ebf3a8e8affc7039ed93c80a0b195ba33ac7736b))
+* **checkpoint:** Ensure _last_time_checked is initialized in on_train_start ([#1116](https://github.com/ecmwf/anemoi-core/issues/1116)) ([1f2783c](https://github.com/ecmwf/anemoi-core/commit/1f2783c781edc6e000c579c11ca8cf17400c9079))
+* Extend loss discriminator to combinedloss schema ([#1117](https://github.com/ecmwf/anemoi-core/issues/1117)) ([69d82e0](https://github.com/ecmwf/anemoi-core/commit/69d82e01d2d86a37787ae9bd423ce943f191c4ae))
+* Poetry issue ([#1077](https://github.com/ecmwf/anemoi-core/issues/1077)) ([a34d89f](https://github.com/ecmwf/anemoi-core/commit/a34d89fea2308002a7d9fc204ae04766b51c5035))
+* Remove double loop ([#1072](https://github.com/ecmwf/anemoi-core/issues/1072)) ([d95bb73](https://github.com/ecmwf/anemoi-core/commit/d95bb73628ef9e99016a9c2525b91a6c06aee45f))
+* Restore plotting callbacks ([#1098](https://github.com/ecmwf/anemoi-core/issues/1098)) ([4c44ace](https://github.com/ecmwf/anemoi-core/commit/4c44acee31186716ed9408654716769b1ff28203))
+
+
+### Documentation
+
+* Add extra section in task page to create custom task ([#1068](https://github.com/ecmwf/anemoi-core/issues/1068)) ([9d54ffb](https://github.com/ecmwf/anemoi-core/commit/9d54ffb0af725991e825d0e12215306040c7202f))
+
+## [0.12.1](https://github.com/ecmwf/anemoi-core/compare/training-0.12.0...training-0.12.1) (2026-04-23)
+
+
+### Bug Fixes
+
+* Apply spatial mask to coordinates when using focus_area with boolean mask ([#1062](https://github.com/ecmwf/anemoi-core/issues/1062)) ([4ccf5a7](https://github.com/ecmwf/anemoi-core/commit/4ccf5a7cf81339e00b51830538ba05a0f66938d6))
+* Fix anemoi TimeLimit callback ([#1064](https://github.com/ecmwf/anemoi-core/issues/1064)) ([09fd87f](https://github.com/ecmwf/anemoi-core/commit/09fd87f9be6bce73b2e160d480fcf0316dcfae47))
+* Improve handling of axis limits buffer for plotting callbacks ([#1063](https://github.com/ecmwf/anemoi-core/issues/1063)) ([1f052ec](https://github.com/ecmwf/anemoi-core/commit/1f052ecb98db3e3f4e4d37c4bb7ef56ecfb01394))
+
+## [0.12.0](https://github.com/ecmwf/anemoi-core/compare/training-0.11.0...training-0.12.0) (2026-04-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* **training:** decouple training method & task ([#896](https://github.com/ecmwf/anemoi-core/issues/896))
+* **training:** make LR scheduler configurable through Hydra and clean up optimization config ([#986](https://github.com/ecmwf/anemoi-core/issues/986)) fx
+
+### Features
+
+* Deprecate LongRolloutPlots ([#1020](https://github.com/ecmwf/anemoi-core/issues/1020)) ([42af828](https://github.com/ecmwf/anemoi-core/commit/42af8286da370b2dbefb9e1e12dc71b30288a558))
+* Make blas backend configurable ([#1042](https://github.com/ecmwf/anemoi-core/issues/1042)) ([7a19bd8](https://github.com/ecmwf/anemoi-core/commit/7a19bd8ebd7ad0427af2afe50057e5b97a7c1008))
+* **models:** Point-wise forward/backward mappers ([#990](https://github.com/ecmwf/anemoi-core/issues/990)) ([8f29f92](https://github.com/ecmwf/anemoi-core/commit/8f29f9294739072ac4fa7fdfc9b76864b5a60874))
+* **training:** Decouple training method & task ([#896](https://github.com/ecmwf/anemoi-core/issues/896)) ([08f6536](https://github.com/ecmwf/anemoi-core/commit/08f6536658c41d9f4e257e6fe65b656696b57150))
+* **training:** Make LR scheduler configurable through Hydra and clean up optimization config ([#986](https://github.com/ecmwf/anemoi-core/issues/986)) fx ([acf58b8](https://github.com/ecmwf/anemoi-core/commit/acf58b8af4b2adaae0c3328b1c255d7687003a8f))
+
+
+### Bug Fixes
+
+* Allow control of multiprocessing context in the DataLoader ([#1000](https://github.com/ecmwf/anemoi-core/issues/1000)) ([70da85d](https://github.com/ecmwf/anemoi-core/commit/70da85ddf777460210b423542745f1718c186072))
+* Don't crash if config.dataloader.multiprocessing is not set ([#1024](https://github.com/ecmwf/anemoi-core/issues/1024)) ([a1f769d](https://github.com/ecmwf/anemoi-core/commit/a1f769d393c583da74694ab826a925e0e43b253c))
+
+
+### Documentation
+
+* **training:** Update optimizer and scheduler documentation ([#1040](https://github.com/ecmwf/anemoi-core/issues/1040)) ([98b14a3](https://github.com/ecmwf/anemoi-core/commit/98b14a31daaff363edc6bea04e375e476f320cc6)), closes [#1038](https://github.com/ecmwf/anemoi-core/issues/1038)
+
+## [0.11.0](https://github.com/ecmwf/anemoi-core/compare/training-0.10.0...training-0.11.0) (2026-03-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* **diagnostics:** Rollout Evaluation ([#1011](https://github.com/ecmwf/anemoi-core/issues/1011))
+
+### Features
+
+* **mlflow:** Store username as a tag ([#1008](https://github.com/ecmwf/anemoi-core/issues/1008)) ([992a300](https://github.com/ecmwf/anemoi-core/commit/992a300e6add4894d2ab2b5d44a50c738cdbdc1b))
+
+
+### Bug Fixes
+
+* `member` argument of `EnsemblePlotMixin`'s  `process` method ([#843](https://github.com/ecmwf/anemoi-core/issues/843)) ([266f5a6](https://github.com/ecmwf/anemoi-core/commit/266f5a68e393aad1629ef9d2260a7fd347b9f182))
+* Add max version pining to Torch&lt;2.11 ([#1006](https://github.com/ecmwf/anemoi-core/issues/1006)) ([a23c97c](https://github.com/ecmwf/anemoi-core/commit/a23c97c272c02de18519deebc4e2149105a24be1))
+* **diagnostics:** Rollout Evaluation ([#1011](https://github.com/ecmwf/anemoi-core/issues/1011)) ([c23cdab](https://github.com/ecmwf/anemoi-core/commit/c23cdab59a55551951addaebb9728239629157df))
+* Log MLflow artifacts into per-callback subfolders ([#962](https://github.com/ecmwf/anemoi-core/issues/962)) ([6f650f2](https://github.com/ecmwf/anemoi-core/commit/6f650f226446e81fc710ac5a51d5a324f7cd5594))
+* Refactor `expand_iterables`: expand non-trivial lists (including ListConfig) ([#982](https://github.com/ecmwf/anemoi-core/issues/982)) ([fac741c](https://github.com/ecmwf/anemoi-core/commit/fac741c9aaa67491632039d256fcdaf2a3fea1b1))
+* **training:** Multiscale wrapper sharding is broken after multi dataset merge ([#958](https://github.com/ecmwf/anemoi-core/issues/958)) ([7603aa3](https://github.com/ecmwf/anemoi-core/commit/7603aa31e213de525eedbe1034460ae97a659031))
+
+## [0.10.0](https://github.com/ecmwf/anemoi-core/compare/training-0.9.1...training-0.10.0) (2026-03-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* **training:** expands graph config for multiple datasets ([#895](https://github.com/ecmwf/anemoi-core/issues/895))
+* **models:** move functionality to base model class ([#922](https://github.com/ecmwf/anemoi-core/issues/922))
+* Rewrite dataset Schema to fix issue 911 ([#916](https://github.com/ecmwf/anemoi-core/issues/916))
+* **training:** remove `grid_indices` inside Dataset ([#848](https://github.com/ecmwf/anemoi-core/issues/848))
+
+### Features
+
+* Checkpoint pipeline infrastructure (Phase 1) ([#501](https://github.com/ecmwf/anemoi-core/issues/501)) ([2e20ec6](https://github.com/ecmwf/anemoi-core/commit/2e20ec67cbf41ddbe192ba72ccdca02689816c00))
+* Consolidate and expand spectral losses ([#788](https://github.com/ecmwf/anemoi-core/issues/788)) ([9d70464](https://github.com/ecmwf/anemoi-core/commit/9d7046462e8b9b270296f34fdb10ea8e9cf08e06))
+* Diffusion bm test ([#921](https://github.com/ecmwf/anemoi-core/issues/921)) ([82e5fd1](https://github.com/ecmwf/anemoi-core/commit/82e5fd1e24b8ff50ab549b30ecaea3b65207f44c))
+* Enable plotting for Autoencoder ([#908](https://github.com/ecmwf/anemoi-core/issues/908)) ([18cd886](https://github.com/ecmwf/anemoi-core/commit/18cd886b64afa753e37b6095729445f3c58241b7))
+* **models,training:** Deprecate dynamic imputers ([#942](https://github.com/ecmwf/anemoi-core/issues/942)) ([fbdfa0c](https://github.com/ecmwf/anemoi-core/commit/fbdfa0c7c586697d9523380f3e539c4b35ab9f11))
+* **models:** Move functionality to base model class ([#922](https://github.com/ecmwf/anemoi-core/issues/922)) ([b735ec3](https://github.com/ecmwf/anemoi-core/commit/b735ec3c58d7f3e09b2ad8138855b37a05bee297))
+* Remove single out time interpolator ([#915](https://github.com/ecmwf/anemoi-core/issues/915)) ([80713fb](https://github.com/ecmwf/anemoi-core/commit/80713fb6d04b76ecfd44c6e5e450a546ac2a0d1c))
+* Rewrite dataset Schema to fix issue 911 ([#916](https://github.com/ecmwf/anemoi-core/issues/916)) ([b198783](https://github.com/ecmwf/anemoi-core/commit/b198783325bb0a8458be6525cc00e1319de48f4b))
+* **training:** Deprecate tensorboard and Harmonise loggers interface ([#850](https://github.com/ecmwf/anemoi-core/issues/850)) ([3da01b7](https://github.com/ecmwf/anemoi-core/commit/3da01b78c9a21f7b402eb7e0ebb4caa9f3b23f29))
+
+
+### Bug Fixes
+
+* Convert sanity rnd tensor ([#920](https://github.com/ecmwf/anemoi-core/issues/920)) ([f6f85e1](https://github.com/ecmwf/anemoi-core/commit/f6f85e1ab32a4781f3ed3d0236ffddc99a5d44a5))
+* Doc on number of ensemble members ([#972](https://github.com/ecmwf/anemoi-core/issues/972)) ([e9c1cc3](https://github.com/ecmwf/anemoi-core/commit/e9c1cc3ff1ddbf84b57c5e77809c8da7d8a1e10a))
+* Extend transfer learning to multidataset checkpoints ([#862](https://github.com/ecmwf/anemoi-core/issues/862)) ([#867](https://github.com/ecmwf/anemoi-core/issues/867)) ([4974428](https://github.com/ecmwf/anemoi-core/commit/497442888f96ff9cad214b552307a56c8ddfb316))
+* Forbid extras in nativedatasetschema ([#901](https://github.com/ecmwf/anemoi-core/issues/901)) ([dead80d](https://github.com/ecmwf/anemoi-core/commit/dead80d92075f2cda08287c131c3e06d1100a5db))
+* Integrate select variables in dataloader ([#900](https://github.com/ecmwf/anemoi-core/issues/900)) ([d34e80c](https://github.com/ecmwf/anemoi-core/commit/d34e80cacd2a82ca9d718b2914fe6e8cb306498a))
+* Interpolator_config ([#948](https://github.com/ecmwf/anemoi-core/issues/948)) ([d71d065](https://github.com/ecmwf/anemoi-core/commit/d71d06525614fa42b5dc6376b7c2d92b5180df85))
+* **mlflow:** Fix KeyError in error message for missing environment variables ([#894](https://github.com/ecmwf/anemoi-core/issues/894)) ([77ca1ae](https://github.com/ecmwf/anemoi-core/commit/77ca1ae5f5eb34c0790ec4ac24aee8814ee45cd7))
+* Optimiser schema was ignoring kwargs ([#885](https://github.com/ecmwf/anemoi-core/issues/885)) ([1f1a030](https://github.com/ecmwf/anemoi-core/commit/1f1a030421bebd2daf31c7cf285138b4baea340d))
+* Single interpolator ([#881](https://github.com/ecmwf/anemoi-core/issues/881)) ([4378de0](https://github.com/ecmwf/anemoi-core/commit/4378de0afd03010ef8b012b973d186961f67bbf0))
+* **training:** Add base seed fallback ([#957](https://github.com/ecmwf/anemoi-core/issues/957)) ([fd3883f](https://github.com/ecmwf/anemoi-core/commit/fd3883fb9b46a20b3453cf854563b9df8237cd41))
+* **training:** Expands graph config for multiple datasets ([#895](https://github.com/ecmwf/anemoi-core/issues/895)) ([33d7f4e](https://github.com/ecmwf/anemoi-core/commit/33d7f4e11fff8da22243fbb924036bab07f17c65))
+* **training:** Plot callbacks multi out and noopt graph provider ([#872](https://github.com/ecmwf/anemoi-core/issues/872)) ([872618f](https://github.com/ecmwf/anemoi-core/commit/872618fc6d2cc5060bd142fa634a7095b0645761))
+* **training:** Scaler index handling improvement, doc string clean-up ([#879](https://github.com/ecmwf/anemoi-core/issues/879)) ([7ffa124](https://github.com/ecmwf/anemoi-core/commit/7ffa12496e64ce46544d085dec58f47f4d6e234e))
+
+
+### Code Refactoring
+
+* **training:** Remove `grid_indices` inside Dataset ([#848](https://github.com/ecmwf/anemoi-core/issues/848)) ([dcd69ac](https://github.com/ecmwf/anemoi-core/commit/dcd69ac415894131876c2f19af643896f1605fe6))
+
+## [0.9.1](https://github.com/ecmwf/anemoi-core/compare/training-0.9.0...training-0.9.1) (2026-02-09)
+
+
+### Features
+
+* Focus area ([#799](https://github.com/ecmwf/anemoi-core/issues/799)) ([e34fdd7](https://github.com/ecmwf/anemoi-core/commit/e34fdd7b88506f50b5e214658636ad34e966dff8))
+* Multi output steps ([#636](https://github.com/ecmwf/anemoi-core/issues/636)) ([99aaf71](https://github.com/ecmwf/anemoi-core/commit/99aaf715bd423acfc21a1794e231acdd7ee37ac4))
+* **training:** Make activation checkpoints configurable ([#797](https://github.com/ecmwf/anemoi-core/issues/797)) ([b06b450](https://github.com/ecmwf/anemoi-core/commit/b06b450509dfc2ff36a4a20f161676917ed976ae))
+* **training:** Support datasets with missing dates ([#860](https://github.com/ecmwf/anemoi-core/issues/860)) ([76eaaa4](https://github.com/ecmwf/anemoi-core/commit/76eaaa44f127f4c0899f67582e71bec944659206))
+
+
+### Bug Fixes
+
+* Deactivate PlotSprectrum from testing pipelines ([#846](https://github.com/ecmwf/anemoi-core/issues/846)) ([6c778e4](https://github.com/ecmwf/anemoi-core/commit/6c778e442e26e71a589813fee644707d26be1583))
+* **schema:** Remove optional config fields from the schema ([#865](https://github.com/ecmwf/anemoi-core/issues/865)) ([6f37d7d](https://github.com/ecmwf/anemoi-core/commit/6f37d7df1f44d9e3259479022b29c93c528c2544))
+* **training,data:** Add tests for MultiDataset ([#868](https://github.com/ecmwf/anemoi-core/issues/868)) ([9c399b2](https://github.com/ecmwf/anemoi-core/commit/9c399b2502d44933acec2c5d3700b61a6ad4e72d))
+* **training,dataset:** Fix missing drop or frequency ([#857](https://github.com/ecmwf/anemoi-core/issues/857)) ([f9b6599](https://github.com/ecmwf/anemoi-core/commit/f9b65998d325c6f3be13abd1963d897c2f7123aa))
+* **training:** Follow-up to multiple datasets ([#844](https://github.com/ecmwf/anemoi-core/issues/844)) ([3a25674](https://github.com/ecmwf/anemoi-core/commit/3a25674d56fea996dfb31cffe48734321ddecf8b))
+
+## [0.9.0](https://github.com/ecmwf/anemoi-core/compare/training-0.8.4...training-0.9.0) (2026-01-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* **models,training:** multi dataset integration
+
+### Features
+
+* Drop python 3.10 ([#795](https://github.com/ecmwf/anemoi-core/issues/795)) ([ebea6d0](https://github.com/ecmwf/anemoi-core/commit/ebea6d09b4f7ea834865134670d0f2e187140ae1))
+* **models,training:** Multi dataset integration ([f537d7f](https://github.com/ecmwf/anemoi-core/commit/f537d7f209092215a94b9e7c613acc781ca4966b))
+* **training:** Autoencoder 🗜️ ([#252](https://github.com/ecmwf/anemoi-core/issues/252)) ([50e497b](https://github.com/ecmwf/anemoi-core/commit/50e497bd3c815a78638185081e9d008e6d828aa2))
+
+
+### Bug Fixes
+
+* **deps:** Workaround for failing uv dependency resolution ([#828](https://github.com/ecmwf/anemoi-core/issues/828)) ([bc64bac](https://github.com/ecmwf/anemoi-core/commit/bc64bac8df31f8ffb9951de4f7d02bf4f442a4be))
+* Set min version for azureml-mlflow ([#842](https://github.com/ecmwf/anemoi-core/issues/842)) ([0f721a5](https://github.com/ecmwf/anemoi-core/commit/0f721a56fc5bb59b7a405f2fe81fa34d027ff1b1))
+
+## [0.8.4](https://github.com/ecmwf/anemoi-core/compare/training-0.8.3...training-0.8.4) (2026-01-14)
+
+
+### Features
+
+* Introduce spectral losses module ([#678](https://github.com/ecmwf/anemoi-core/issues/678)) ([9745b46](https://github.com/ecmwf/anemoi-core/commit/9745b4688482986f62c0590b53a2bf4d551e077d))
+* **models:** Mapper refactor ([#574](https://github.com/ecmwf/anemoi-core/issues/574)) ([83820c8](https://github.com/ecmwf/anemoi-core/commit/83820c8ad049d8dfd4ed4b737b5e4f597b9f2b1f))
+
+
+### Bug Fixes
+
+* **graphs,aicon:** Integration test ([#794](https://github.com/ecmwf/anemoi-core/issues/794)) ([1d8770c](https://github.com/ecmwf/anemoi-core/commit/1d8770c649a08ac319dd9132a41485afb88ab78e))
+* Remove limit on numpy version ([#688](https://github.com/ecmwf/anemoi-core/issues/688)) ([bc6c6cb](https://github.com/ecmwf/anemoi-core/commit/bc6c6cbaacb0968c3bb10bbaa5cb71f09b49ce28))
+* **training:** Dataloader worker ranges ([#764](https://github.com/ecmwf/anemoi-core/issues/764)) ([3ce36ae](https://github.com/ecmwf/anemoi-core/commit/3ce36ae54cbfe4181434dbb9fb35c613d5aa541c))
+
+## [0.8.3](https://github.com/ecmwf/anemoi-core/compare/training-0.8.2...training-0.8.3) (2026-01-05)
+
+
+### Bug Fixes
+
+* **ensemble training:** Training is broken when ensemble is sharded across gpus ([#774](https://github.com/ecmwf/anemoi-core/issues/774)) ([ca08316](https://github.com/ecmwf/anemoi-core/commit/ca08316c20e854e1d1f9708facba0bc695a3269c))
+* Reverting change to include dependency of mlflow-export-import to unblock pypi releases ([#775](https://github.com/ecmwf/anemoi-core/issues/775)) ([f7d2acc](https://github.com/ecmwf/anemoi-core/commit/f7d2accd527c8e3729f91685e534873a2f3b4136))
+* **tests:** Expand losses test suite ([#754](https://github.com/ecmwf/anemoi-core/issues/754)) ([e6b7dbb](https://github.com/ecmwf/anemoi-core/commit/e6b7dbb3b200a4117fd51de02b201e6669414317))
+* **training:** Convert warm_start_path to pathlib.Path object ([#751](https://github.com/ecmwf/anemoi-core/issues/751)) ([59f033c](https://github.com/ecmwf/anemoi-core/commit/59f033c7d87006004b58ecfd50308ccaca695127))
+
+## [0.8.2](https://github.com/ecmwf/anemoi-core/compare/training-0.8.1...training-0.8.2) (2025-12-18)
+
+
+### Features
+
+* Multi-scale loss implementations (including multi-scale kcrps) ([#388](https://github.com/ecmwf/anemoi-core/issues/388)) ([17cb84d](https://github.com/ecmwf/anemoi-core/commit/17cb84d276b0fef25f3aa23f325b353ba8f3d0c4))
+
+
+### Bug Fixes
+
+* **docs,schemas:** Update hardware reference in docstrings, documentation and schemas ([#737](https://github.com/ecmwf/anemoi-core/issues/737)) ([4872c7c](https://github.com/ecmwf/anemoi-core/commit/4872c7cba8e9ffabce48ef353b75c73d6c166a9f))
+* Fix check for checkpoint path in the dry run case. ([#755](https://github.com/ecmwf/anemoi-core/issues/755)) ([0f82efa](https://github.com/ecmwf/anemoi-core/commit/0f82efac816d1ed6a04c5b50e50ded14c9197379))
+* Mlflow-export-import new inputs format ([#748](https://github.com/ecmwf/anemoi-core/issues/748)) ([7bca8e8](https://github.com/ecmwf/anemoi-core/commit/7bca8e89c19b51c5b8f0bb7e367b1be1ed4c302f))
+* Progress bar with lightning==2.6.0 ([#739](https://github.com/ecmwf/anemoi-core/issues/739)) ([e7453ae](https://github.com/ecmwf/anemoi-core/commit/e7453aecf0007d5faa7c2faa34c5f97ab04bb89e))
+* **training:** Add missing rad2deg in plot sample ([#744](https://github.com/ecmwf/anemoi-core/issues/744)) ([a5fedb3](https://github.com/ecmwf/anemoi-core/commit/a5fedb3affd989ea3502b91a43085694bef34291))
+* Update the CLI to generate a MLFlow run ID. ([#758](https://github.com/ecmwf/anemoi-core/issues/758)) ([88bf1e5](https://github.com/ecmwf/anemoi-core/commit/88bf1e5b59e2bd88ccee7c46125a52dbefc3ff71))
+* Wrong model for ens in benchmarking tests ([#760](https://github.com/ecmwf/anemoi-core/issues/760)) ([a0d9984](https://github.com/ecmwf/anemoi-core/commit/a0d99848839addbb5cad011b8938c7971151e6ed))
+
+## [0.8.1](https://github.com/ecmwf/anemoi-core/compare/training-0.8.0...training-0.8.1) (2025-12-08)
+
+
+### Features
+
+* Edge pre mlp for gt conv ([#695](https://github.com/ecmwf/anemoi-core/issues/695)) ([c72a789](https://github.com/ecmwf/anemoi-core/commit/c72a789217f3ec13575a2f339cfe331732648cd9))
+* Noise injector refactor ([#724](https://github.com/ecmwf/anemoi-core/issues/724)) ([e1000af](https://github.com/ecmwf/anemoi-core/commit/e1000af21525632555d1b7065fb6e808bcdf32cc))
+
+
+### Bug Fixes
+
+* **training:** Handle CombinedLoss in print_variable_scaling ([#723](https://github.com/ecmwf/anemoi-core/issues/723)) ([b650c59](https://github.com/ecmwf/anemoi-core/commit/b650c59ac975f63c29f4ce1bbc2c438b988f3a5a))
+
+## [0.8.0](https://github.com/ecmwf/anemoi-core/compare/training-0.7.0...training-0.8.0) (2025-12-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* **training:** Refactor configuration by introducing system schema with hardware, paths, and files subschemas ([#598](https://github.com/ecmwf/anemoi-core/issues/598))
+* cond layer norm ([#658](https://github.com/ecmwf/anemoi-core/issues/658))
+
+### Features
+
+* Activate minmium plotting for integration tests ([#669](https://github.com/ecmwf/anemoi-core/issues/669)) ([84e5882](https://github.com/ecmwf/anemoi-core/commit/84e5882352a82482f77c5d14225b9f5fda28f134))
+* Compile transformer gnn ([#181](https://github.com/ecmwf/anemoi-core/issues/181)) ([24d162c](https://github.com/ecmwf/anemoi-core/commit/24d162c8dc5e47f14439ee2d2623abd916b6f129))
+* **models:** Add configurable residual connections in enc-proc-dec ([#670](https://github.com/ecmwf/anemoi-core/issues/670)) ([aeaf00b](https://github.com/ecmwf/anemoi-core/commit/aeaf00b1b42c7a6f98547fc6289e99660a9b5630))
+* **models:** Triton GraphTransformer ([#631](https://github.com/ecmwf/anemoi-core/issues/631)) ([b40b6c6](https://github.com/ecmwf/anemoi-core/commit/b40b6c610af47d15e8bb087c7bee79e692f7f2d7))
+* Time_interpolator_callbacks ([#677](https://github.com/ecmwf/anemoi-core/issues/677)) ([c2b8179](https://github.com/ecmwf/anemoi-core/commit/c2b81798ec29fbf3d7a6abea4e041b099479060c))
+* **training:** Performance docs ([#696](https://github.com/ecmwf/anemoi-core/issues/696)) ([9574ff1](https://github.com/ecmwf/anemoi-core/commit/9574ff1cf0e2979a1e86886306a82033af9f4d4f))
+* **training:** Refactor optimizer creation to support custom and torch optimizers ([#588](https://github.com/ecmwf/anemoi-core/issues/588)) ([cd777fb](https://github.com/ecmwf/anemoi-core/commit/cd777fb44b23ec047623f3dbcf86b21f50a75ea2))
+
+
+### Bug Fixes
+
+* Add package config path to Hydra search path in plugin ([#656](https://github.com/ecmwf/anemoi-core/issues/656)) ([ca6f732](https://github.com/ecmwf/anemoi-core/commit/ca6f732f0b21ef7202187aff19c029724ece464c))
+* Cond layer norm ([#658](https://github.com/ecmwf/anemoi-core/issues/658)) ([7315e3a](https://github.com/ecmwf/anemoi-core/commit/7315e3a4144a0b40322ff5bfef26accb91676232))
+* **logger:** Bugs in AzureMLFlowLogger from [#646](https://github.com/ecmwf/anemoi-core/issues/646) ([#685](https://github.com/ecmwf/anemoi-core/issues/685)) ([14c0235](https://github.com/ecmwf/anemoi-core/commit/14c023541fe865e4da15a06c9567780193c19a02))
+* **models:** Processor chunking ([#629](https://github.com/ecmwf/anemoi-core/issues/629)) ([06e5533](https://github.com/ecmwf/anemoi-core/commit/06e5533f3e8da37c44d887c42b67440b40286cb3))
+* Pass weights_only for pytorch lightning &gt;= 2.6.0 ([#713](https://github.com/ecmwf/anemoi-core/issues/713)) ([7446942](https://github.com/ecmwf/anemoi-core/commit/74469423b4be8bd750e06a0cfa4c0763ba4695a4))
+* Ptl 2.6.0 explicitly pass weights_only=False ([#710](https://github.com/ecmwf/anemoi-core/issues/710)) ([e18824c](https://github.com/ecmwf/anemoi-core/commit/e18824cf89323593a1d45c67eefbe3acf233216d))
+* RolloutEval sharding ([#714](https://github.com/ecmwf/anemoi-core/issues/714)) ([0fbc071](https://github.com/ecmwf/anemoi-core/commit/0fbc071b2092eefdce6643083d60eb989e8040b2))
+* Slurm system config ([#702](https://github.com/ecmwf/anemoi-core/issues/702)) ([cce8763](https://github.com/ecmwf/anemoi-core/commit/cce8763b72c058bce388f34ab248f66608d5fa05))
+* Target docs ([#704](https://github.com/ecmwf/anemoi-core/issues/704)) ([200101e](https://github.com/ecmwf/anemoi-core/commit/200101e539f24c208c9167bad3a86052152b634e))
+* **training,tasks:** Abstract RolloutForecasting task ([#682](https://github.com/ecmwf/anemoi-core/issues/682)) ([f14fc32](https://github.com/ecmwf/anemoi-core/commit/f14fc321259acafbfe5176b0e4146d901304a802))
+* **training:** CombinedLoss schema validation ([#719](https://github.com/ecmwf/anemoi-core/issues/719)) ([dba4268](https://github.com/ecmwf/anemoi-core/commit/dba42684794422e46b16c76f4c17a6db4859fd2c))
+* **training:** Refactor configuration by introducing system schema with hardware, paths, and files subschemas ([#598](https://github.com/ecmwf/anemoi-core/issues/598)) ([da02fe7](https://github.com/ecmwf/anemoi-core/commit/da02fe7bac8c6a69f1ac967f3b243d716abf5910))
+* **training:** Remove unused code ([#706](https://github.com/ecmwf/anemoi-core/issues/706)) ([f49813a](https://github.com/ecmwf/anemoi-core/commit/f49813acb96af7a673337ec86bbc5886351917ce))
+
+## [0.7.0](https://github.com/ecmwf/anemoi-core/compare/training-0.6.7...training-0.7.0) (2025-11-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* **training:** remove support for EDA ([#651](https://github.com/ecmwf/anemoi-core/issues/651))
+
+### Features
+
+* Callbacks for GraphEnsForecaster. ([#449](https://github.com/ecmwf/anemoi-core/issues/449)) ([39c2bfc](https://github.com/ecmwf/anemoi-core/commit/39c2bfc7d0c840d92516b139cc5f497bbe1296a0))
+* Mlflow azure ([#646](https://github.com/ecmwf/anemoi-core/issues/646)) ([27bd3dd](https://github.com/ecmwf/anemoi-core/commit/27bd3dd8648bac7ead5ec809b874faa962bddd05))
+* **training:** Remove support for EDA ([#651](https://github.com/ecmwf/anemoi-core/issues/651)) ([921e108](https://github.com/ecmwf/anemoi-core/commit/921e108b8467f1bcd4e69516927efee2f58f9e33))
+
+
+### Bug Fixes
+
+* Anemoi-datasets import ([#626](https://github.com/ecmwf/anemoi-core/issues/626)) ([65c8901](https://github.com/ecmwf/anemoi-core/commit/65c89017fbc38cfe84ce61f4cd6f5aeb59b91224))
+* Bug for mlflow offline logging ([#675](https://github.com/ecmwf/anemoi-core/issues/675)) ([fdce0f6](https://github.com/ecmwf/anemoi-core/commit/fdce0f6520e67e6d9039ed3417ff2fc0d76b002a))
+* Bug in sample plots. ([#632](https://github.com/ecmwf/anemoi-core/issues/632)) ([9e024f3](https://github.com/ecmwf/anemoi-core/commit/9e024f37510780c12980d280a8247553b6e18225))
+* Incorrect test for variable mask scaler ([#649](https://github.com/ecmwf/anemoi-core/issues/649)) ([d0f775e](https://github.com/ecmwf/anemoi-core/commit/d0f775e1054ead2c538d0e2391ef71f995123989))
+* Integration tests and drop missed reference for  profiler ([#630](https://github.com/ecmwf/anemoi-core/issues/630)) ([f352e17](https://github.com/ecmwf/anemoi-core/commit/f352e17eca68c0cd797fdb5bf5fcf9bd4a2b505d))
+* **training:** Provide more informative error when user specifies inexistent node attribute  ([#663](https://github.com/ecmwf/anemoi-core/issues/663)) ([dde3cb6](https://github.com/ecmwf/anemoi-core/commit/dde3cb6726a078115a086ba13bb846313fe29e41))
+* Update readmes ([#655](https://github.com/ecmwf/anemoi-core/issues/655)) ([a58aa64](https://github.com/ecmwf/anemoi-core/commit/a58aa640212cdc6d5de6e38a6d11725d32d662b5))
+
+## [0.6.7](https://github.com/ecmwf/anemoi-core/compare/training-0.6.6...training-0.6.7) (2025-10-20)
+
+
+### Features
+
+* **models:** Point-mlp proccesor ([#367](https://github.com/ecmwf/anemoi-core/issues/367)) ([ee2a067](https://github.com/ecmwf/anemoi-core/commit/ee2a067689b6efe18acb13ceac8ed0be512633d5))
+
+
+### Bug Fixes
+
+* CPU integration test - update AICON test to use anemoi-utils data download fixtures ([#608](https://github.com/ecmwf/anemoi-core/issues/608)) ([4c53c95](https://github.com/ecmwf/anemoi-core/commit/4c53c95e052afdbc89d03bea9c871b3e09046007))
+* Refactored paths to import from package directly ([#601](https://github.com/ecmwf/anemoi-core/issues/601)) ([f28bfd4](https://github.com/ecmwf/anemoi-core/commit/f28bfd4c453dd0cbe0d65e5a7dafdbf531e9db44))
+* **training:** Add default empty forcing list to DataSchema ([#602](https://github.com/ecmwf/anemoi-core/issues/602)) ([18a609b](https://github.com/ecmwf/anemoi-core/commit/18a609b5a5f59bfcd65c68ddb2177105317b6a18))
+* **training:** Nan mask weights gather for plots ([#537](https://github.com/ecmwf/anemoi-core/issues/537)) ([a293b99](https://github.com/ecmwf/anemoi-core/commit/a293b9963000eb8f31433f0327809fcf99e0a447))
+
+
+### Documentation
+
+* **training:** More explicit comment about order of preprocessors in config file ([#613](https://github.com/ecmwf/anemoi-core/issues/613)) ([bbd152d](https://github.com/ecmwf/anemoi-core/commit/bbd152d434c9388a9dfc9100c7608255d932f79a))
+
+## [0.6.6](https://github.com/ecmwf/anemoi-core/compare/training-0.6.5...training-0.6.6) (2025-10-09)
+
+
+### Features
+
+* Log variable scaling in mlflow ([#327](https://github.com/ecmwf/anemoi-core/issues/327)) ([1c4a966](https://github.com/ecmwf/anemoi-core/commit/1c4a96663c0b363fd81364d09dc7cd2f558acd7e))
+* **mlflow login:** Support for multiple servers ([#573](https://github.com/ecmwf/anemoi-core/issues/573)) ([7b23100](https://github.com/ecmwf/anemoi-core/commit/7b231000f054b27547335c2c8448329fa1d2354e))
+* Target indices ([#426](https://github.com/ecmwf/anemoi-core/issues/426)) ([d8db2a6](https://github.com/ecmwf/anemoi-core/commit/d8db2a6fc192bc49107df6c137ce4f56866ae4d4))
+
+
+### Bug Fixes
+
+* Allow int values in variable group schema ([#571](https://github.com/ecmwf/anemoi-core/issues/571)) ([a9ccc84](https://github.com/ecmwf/anemoi-core/commit/a9ccc84bc8d4f80a4d0e21829a09040528334a66))
+* Interactive mode ([#578](https://github.com/ecmwf/anemoi-core/issues/578)) ([42c0194](https://github.com/ecmwf/anemoi-core/commit/42c0194662cfbcc6d5ae09a2a590848d7169753f))
+* Make batch normalization explicit. ([#448](https://github.com/ecmwf/anemoi-core/issues/448)) ([6108f1d](https://github.com/ecmwf/anemoi-core/commit/6108f1d29fd78fc16549e28e59c18c0c50593043))
+* Make TimeLimit callback compliant with multiple nodes  ([#564](https://github.com/ecmwf/anemoi-core/issues/564)) ([c94164d](https://github.com/ecmwf/anemoi-core/commit/c94164d28e761e1eb52ff16dfec73a3ad61976d0))
+* Mask dimension number change ([#526](https://github.com/ecmwf/anemoi-core/issues/526)) ([e049e83](https://github.com/ecmwf/anemoi-core/commit/e049e839e3a1a1abf293ae5b7d8b2e9d7036efae))
+* Remove batch_idx when useless ([#528](https://github.com/ecmwf/anemoi-core/issues/528)) ([2b6c205](https://github.com/ecmwf/anemoi-core/commit/2b6c2055c0155b6cf5e58355f0358245dafd7705))
+* **training,schemas:** Pydantic model_validator in training/schemas/base_schema.py ([#562](https://github.com/ecmwf/anemoi-core/issues/562)) ([b64735d](https://github.com/ecmwf/anemoi-core/commit/b64735d6f895952c7976f39f61c2b653569fef4f))
+* **training:** Add default diagnostics to empty list ([#597](https://github.com/ecmwf/anemoi-core/issues/597)) ([e243f95](https://github.com/ecmwf/anemoi-core/commit/e243f950822b36e9e706fafcdea9d753c1fdbfb6))
+* **training:** Correct Imputer Doc ([#576](https://github.com/ecmwf/anemoi-core/issues/576)) ([e218652](https://github.com/ecmwf/anemoi-core/commit/e218652e3eb9e0881d942cc00c75c0b47f8f7b73))
+
+## [0.6.5](https://github.com/ecmwf/anemoi-core/compare/training-0.6.4...training-0.6.5) (2025-09-09)
+
+
+### Features
+
+* Flash attention v3 ([#479](https://github.com/ecmwf/anemoi-core/issues/479)) ([00f52df](https://github.com/ecmwf/anemoi-core/commit/00f52df292f8fb8dc0a865f6d288fa151c630a2c))
+
+
+### Bug Fixes
+
+* Fix dry run check to use current run object ([#515](https://github.com/ecmwf/anemoi-core/issues/515)) ([02b0aee](https://github.com/ecmwf/anemoi-core/commit/02b0aee4a7b0916503cc4eaeb6555cee0d73c682))
+* One-variable model ([#478](https://github.com/ecmwf/anemoi-core/issues/478)) ([36addea](https://github.com/ecmwf/anemoi-core/commit/36addea993a0bc19dbe1e7d1c21c95f18975d42a))
+* Outdated docs for loss functions ([#525](https://github.com/ecmwf/anemoi-core/issues/525)) ([cc43519](https://github.com/ecmwf/anemoi-core/commit/cc43519df7bb278d2fd87b4163d63fd658fe9484))
+* Remove gnn ens config ([#534](https://github.com/ecmwf/anemoi-core/issues/534)) ([d5eecd2](https://github.com/ecmwf/anemoi-core/commit/d5eecd2631bf4000f85cfe5fc8a54ea5506263f5))
+* Remove useless code ([#527](https://github.com/ecmwf/anemoi-core/issues/527)) ([d965d06](https://github.com/ecmwf/anemoi-core/commit/d965d067b561c9d0632aff639e7f1a46ddad050e))
+* Test dependencies ([#524](https://github.com/ecmwf/anemoi-core/issues/524)) ([3ac7d4f](https://github.com/ecmwf/anemoi-core/commit/3ac7d4fbc35e0ef0f54566454e235aeaf7f6da67))
+
+## [0.6.4](https://github.com/ecmwf/anemoi-core/compare/training-0.6.3...training-0.6.4) (2025-09-02)
+
+
+### Features
+
+* Checkpoint migrations ([#386](https://github.com/ecmwf/anemoi-core/issues/386)) ([028f6eb](https://github.com/ecmwf/anemoi-core/commit/028f6eb6426c5ada0c5d95e6492accc99083b46f))
+* Extend restart checkpoint to consider graphtransformer ([#497](https://github.com/ecmwf/anemoi-core/issues/497)) ([b8fc40e](https://github.com/ecmwf/anemoi-core/commit/b8fc40ec9d559ffab9f17af0d029444b884daf56))
+
+
+### Bug Fixes
+
+* **training:** LAM sharding ([#481](https://github.com/ecmwf/anemoi-core/issues/481)) ([e513c19](https://github.com/ecmwf/anemoi-core/commit/e513c19a0f80e1f0850627fe51eab992cdd6fa8d))
+
+## [0.6.3](https://github.com/ecmwf/anemoi-core/compare/training-0.6.2...training-0.6.3) (2025-08-22)
+
+
+### Bug Fixes
+
+* GraphInterpolator Lightning Module - add rollout member for compa… ([#496](https://github.com/ecmwf/anemoi-core/issues/496)) ([40aa71c](https://github.com/ecmwf/anemoi-core/commit/40aa71c8eb097442ce33e7f0ff82e81b0947716e))
+
+## [0.6.2](https://github.com/ecmwf/anemoi-core/compare/training-0.6.1...training-0.6.2) (2025-08-20)
+
+
+### Features
+
+* Diffusion training ([#401](https://github.com/ecmwf/anemoi-core/issues/401)) ([f35ad67](https://github.com/ecmwf/anemoi-core/commit/f35ad673f680ba64acb5c6770a3114262b3b97fd))
+
+
+### Bug Fixes
+
+* Mlflow sync cleaning ([#460](https://github.com/ecmwf/anemoi-core/issues/460)) ([50ef49b](https://github.com/ecmwf/anemoi-core/commit/50ef49ba6b5dc09186ae513d908a57e985daae2a))
+* **training:** Callbacks when using rollout  ([#490](https://github.com/ecmwf/anemoi-core/issues/490)) ([7c9442a](https://github.com/ecmwf/anemoi-core/commit/7c9442aeb8fdfa8378e531b2ea9bf051fca1cfd0))
+* **training:** Sharding nan_loss_mask scaler ([#491](https://github.com/ecmwf/anemoi-core/issues/491)) ([9299991](https://github.com/ecmwf/anemoi-core/commit/92999916b7a81a05b364aa1d4ca3d53e3ed35dbb))
+* Update variable groups in lam, ensemble and stretched config files ([#466](https://github.com/ecmwf/anemoi-core/issues/466)) ([8db81f0](https://github.com/ecmwf/anemoi-core/commit/8db81f068e415a913014cdb01b68d048368fd6ff))
+
+
+### Performance Improvements
+
+* Avoid heavy imports through MlflowSchema ([#482](https://github.com/ecmwf/anemoi-core/issues/482)) ([8e97af5](https://github.com/ecmwf/anemoi-core/commit/8e97af5ddb7fa2c025f101075d3bfddfa4126690))
+
+
+### Documentation
+
+* Explain inference overrides ([#487](https://github.com/ecmwf/anemoi-core/issues/487)) ([d1996f9](https://github.com/ecmwf/anemoi-core/commit/d1996f9ec4be78d921feba775c2aeb14c52f102c))
+* Update diffusion documentation ([#486](https://github.com/ecmwf/anemoi-core/issues/486)) ([ff8f9f2](https://github.com/ecmwf/anemoi-core/commit/ff8f9f2d07985312c9196150ed0c1753c1f78703))
+
+## [0.6.1](https://github.com/ecmwf/anemoi-core/compare/training-0.6.0...training-0.6.1) (2025-08-08)
+
+
+### Features
+
+* Add extensible checkpoint loading system                                                                                     │ ([ebc55fc](https://github.com/ecmwf/anemoi-core/commit/ebc55fc9564d03d8e090bafab2fdd93042daa6cf))
+* Extend DelayedScalers into arbitary UpdatingScalers [#371](https://github.com/ecmwf/anemoi-core/issues/371)  ([b9d7726](https://github.com/ecmwf/anemoi-core/commit/b9d772659679b1d1744c9be6a6602673eb9e6969))
+* **models:** Nan locations in imputer calculated on the fly [#378](https://github.com/ecmwf/anemoi-core/issues/378) ([b9d7726](https://github.com/ecmwf/anemoi-core/commit/b9d772659679b1d1744c9be6a6602673eb9e6969))
+* **models:** Postprocessor for nans in diagnostic fields ([#461](https://github.com/ecmwf/anemoi-core/issues/461)) ([a7ff22e](https://github.com/ecmwf/anemoi-core/commit/a7ff22e44b956635bcd3e91b9d780aa041a617d3))
+
+
+### Bug Fixes
+
+* Improve device movement of scalers [#390](https://github.com/ecmwf/anemoi-core/issues/390) ([b9d7726](https://github.com/ecmwf/anemoi-core/commit/b9d772659679b1d1744c9be6a6602673eb9e6969))
+* Introducing SLURMID based cuda device selection to fix cuda busy devices error ([#431](https://github.com/ecmwf/anemoi-core/issues/431)) ([c6d2844](https://github.com/ecmwf/anemoi-core/commit/c6d284421ffe4a876e5caca5f73d86faa9ff6e3b))
+
+## [0.6.0](https://github.com/ecmwf/anemoi-core/compare/training-0.5.1...training-0.6.0) (2025-08-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* for schemas of data processors ([#433](https://github.com/ecmwf/anemoi-core/issues/433))
+* BaseGraphModule and tasks introduced in anemoi-core ([#399](https://github.com/ecmwf/anemoi-core/issues/399))
+
+### Features
+
+* Add metadata back to pl checkpoint. ([#303](https://github.com/ecmwf/anemoi-core/issues/303)) ([0193b28](https://github.com/ecmwf/anemoi-core/commit/0193b280230d36acf94bcd1a1c7f587a7bf1abb7))
+* BaseGraphModule and tasks introduced in anemoi-core ([#399](https://github.com/ecmwf/anemoi-core/issues/399)) ([f8ab962](https://github.com/ecmwf/anemoi-core/commit/f8ab9620f2ea7df90561911f0abf01105d6c923b))
+* **deps:** Use mlflow-skinny instead of mlflow ([#418](https://github.com/ecmwf/anemoi-core/issues/418)) ([6a8beb3](https://github.com/ecmwf/anemoi-core/commit/6a8beb390aec888aa251983a730715e7be41bc3b))
+* Log FTT2 loss + Fourier Correlation loss  ([#148](https://github.com/ecmwf/anemoi-core/issues/148)) ([345b0ab](https://github.com/ecmwf/anemoi-core/commit/345b0ab9a03c80e3944dc6e63a2e8a38123f18a3))
+* **model:** Postprocessors for leaky boundings ([#315](https://github.com/ecmwf/anemoi-core/issues/315)) ([b54562b](https://github.com/ecmwf/anemoi-core/commit/b54562b83b4b5620891b28827964f9c554ee0615))
+* **models:** Checkpointed Mapper Chunking ([#406](https://github.com/ecmwf/anemoi-core/issues/406)) ([8577772](https://github.com/ecmwf/anemoi-core/commit/8577772927a08d62db74159e1023f5db1dc39438))
+* **models:** Mapper edge sharding ([#366](https://github.com/ecmwf/anemoi-core/issues/366)) ([326751d](https://github.com/ecmwf/anemoi-core/commit/326751d25f9bc299f3e19c795d9065a60a6af3d9))
+* Variable filtering ([#208](https://github.com/ecmwf/anemoi-core/issues/208)) ([fba5e47](https://github.com/ecmwf/anemoi-core/commit/fba5e4773471b7cc9bee839251c20c6dd407ca05))
+
+
+### Bug Fixes
+
+* Dropping 3.9 ([#436](https://github.com/ecmwf/anemoi-core/issues/436)) ([f6c0214](https://github.com/ecmwf/anemoi-core/commit/f6c0214ad09d217930956b7eddaf0c8b35a32185))
+* For schemas of data processors ([#433](https://github.com/ecmwf/anemoi-core/issues/433)) ([539939b](https://github.com/ecmwf/anemoi-core/commit/539939be4c4392afcf8ccd73b8de7c44e4b32847))
+* Mlflow hp params limit ([#424](https://github.com/ecmwf/anemoi-core/issues/424)) ([138bc3a](https://github.com/ecmwf/anemoi-core/commit/138bc3af2a922973828aa40dadd765d24e3a076f))
+* Mlflowlogger duplicated key ([#414](https://github.com/ecmwf/anemoi-core/issues/414)) ([cb64a1c](https://github.com/ecmwf/anemoi-core/commit/cb64a1c7fc66bd142401669cc1bcf10f0625d096))
+* **models,traininig:** Hierarchical model + integration test ([#400](https://github.com/ecmwf/anemoi-core/issues/400)) ([71dfd89](https://github.com/ecmwf/anemoi-core/commit/71dfd89d4326d5e59c8ff8fef339b500110ded42))
+* **models:** Add removed sharded_input_key in PR400 ([#425](https://github.com/ecmwf/anemoi-core/issues/425)) ([089fe6f](https://github.com/ecmwf/anemoi-core/commit/089fe6f01c8936887e49f353a17ea1f95b884888))
+* New checkpoint ([#445](https://github.com/ecmwf/anemoi-core/issues/445)) ([a25df93](https://github.com/ecmwf/anemoi-core/commit/a25df93800077caa2eedad2e8e4476c5257a06b4))
+* Plotting error when precip related params are not diagnostic  ([#369](https://github.com/ecmwf/anemoi-core/issues/369)) ([010cfa3](https://github.com/ecmwf/anemoi-core/commit/010cfa3f131ed4378236e5864b6f4d3922028b46))
+* **training:** Address issues with [#208](https://github.com/ecmwf/anemoi-core/issues/208) ([#417](https://github.com/ecmwf/anemoi-core/issues/417)) ([665f462](https://github.com/ecmwf/anemoi-core/commit/665f4629649d2852449059ea2cc7af9bad7e24da))
+* **training:** Scaler memory usage ([#391](https://github.com/ecmwf/anemoi-core/issues/391)) ([a9d30e1](https://github.com/ecmwf/anemoi-core/commit/a9d30e16f796df650b9a1b298b0b0501f1cf1577))
+* Update import mflow utils unit tests ([#427](https://github.com/ecmwf/anemoi-core/issues/427)) ([70ecdd9](https://github.com/ecmwf/anemoi-core/commit/70ecdd9e46f5c9f46dc644cbb8d179392eab6910))
+* Update level retrieval logic ([#405](https://github.com/ecmwf/anemoi-core/issues/405)) ([f393bc3](https://github.com/ecmwf/anemoi-core/commit/f393bc3d133596e98daa27c302ad51cf1bac5d41))
+* Use transforms: Variable for ExtractVariableGroupAndLevel ([#321](https://github.com/ecmwf/anemoi-core/issues/321)) ([7649f4f](https://github.com/ecmwf/anemoi-core/commit/7649f4fb283ca6d26f79b7e07046680fcb10fd23))
+* Warm restart ([#443](https://github.com/ecmwf/anemoi-core/issues/443)) ([ff96236](https://github.com/ecmwf/anemoi-core/commit/ff962363b28dda50979a031af19384a37415af6e))
+
+
+### Documentation
+
+* **graphs:** Documenting some missing features ([#423](https://github.com/ecmwf/anemoi-core/issues/423)) ([8addbd8](https://github.com/ecmwf/anemoi-core/commit/8addbd8655ffa71df786d196f23c9615cffd7f2e))
+
+## [0.5.1](https://github.com/ecmwf/anemoi-core/compare/training-0.5.0...training-0.5.1) (2025-06-17)
+
+
+### Features
+
+* **models,training:** Shard everything ([#121](https://github.com/ecmwf/anemoi-core/issues/121)) ([06dde94](https://github.com/ecmwf/anemoi-core/commit/06dde94219119746215b767b846542ee31bbff63))
+
+
+### Bug Fixes
+
+* Config validator checks for conflict with bounding and graphtran… ([#352](https://github.com/ecmwf/anemoi-core/issues/352)) ([f97313e](https://github.com/ecmwf/anemoi-core/commit/f97313e608f0ce2eebd46bad8e5300edebe6eec1))
+* **training, losses:** NaN handling for crps ([#358](https://github.com/ecmwf/anemoi-core/issues/358)) ([daf9ddd](https://github.com/ecmwf/anemoi-core/commit/daf9dddda8ff8755b59f0559666d6539d525ba3b))
+
+## [0.5.0](https://github.com/ecmwf/anemoi-core/compare/training-0.4.0...training-0.5.0) (2025-06-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* **models,training:** Remove multimapper ([#268](https://github.com/ecmwf/anemoi-core/issues/268))
+* generalise activation function ([#163](https://github.com/ecmwf/anemoi-core/issues/163))
+* Rework Loss Scalings to provide better modularity ([#52](https://github.com/ecmwf/anemoi-core/issues/52))
+
+### Features
+
+* Generalise activation function ([#163](https://github.com/ecmwf/anemoi-core/issues/163)) ([98c4d06](https://github.com/ecmwf/anemoi-core/commit/98c4d06dfb5b79f605fab885c67a8a4cd6d35384))
+* **graphs:** Add scale_resolutions arg ([#188](https://github.com/ecmwf/anemoi-core/issues/188)) ([0ea0642](https://github.com/ecmwf/anemoi-core/commit/0ea06423e4979084b3afe70c30e43bb5dc5f88d5))
+* **models,training:** Remove multimapper ([#268](https://github.com/ecmwf/anemoi-core/issues/268)) ([0e8bb99](https://github.com/ecmwf/anemoi-core/commit/0e8bb998176bea2d653ca40772e4e6e1578551f7))
+* Transformer mapper ([#179](https://github.com/ecmwf/anemoi-core/issues/179)) ([2cea7db](https://github.com/ecmwf/anemoi-core/commit/2cea7db51d5c5ef63bb4b9c266deb05fb2acf66f))
+
+
+### Bug Fixes
+
+* Adapt ensemble configs to work with loss refactor.  ([#300](https://github.com/ecmwf/anemoi-core/issues/300)) ([c210478](https://github.com/ecmwf/anemoi-core/commit/c210478d8e84aaa2e93256aa1b4ceda74e191c7d))
+* Adapt predict_step in model interface to pass on arguments for model classes ([#281](https://github.com/ecmwf/anemoi-core/issues/281)) ([a5b2643](https://github.com/ecmwf/anemoi-core/commit/a5b26432bc7b78577cd1febd5091b059cc82805c))
+* Change output format in validation step to fix issue in plotting ([#305](https://github.com/ecmwf/anemoi-core/issues/305)) ([cc941f3](https://github.com/ecmwf/anemoi-core/commit/cc941f3d7520e230e733654cb45e5c6473b64152))
+* Clean params complement ([#291](https://github.com/ecmwf/anemoi-core/issues/291)) ([4e9ca31](https://github.com/ecmwf/anemoi-core/commit/4e9ca313f838f5eccb305d6bf3b9afd8426f095f))
+* Dataset_order ([#334](https://github.com/ecmwf/anemoi-core/issues/334)) ([762227a](https://github.com/ecmwf/anemoi-core/commit/762227a5a25843dd4531eef1a9cbe86516eaffcd))
+* **deps:** Bump `anemoi-models >= 0.8` ([#351](https://github.com/ecmwf/anemoi-core/issues/351)) ([1fbd525](https://github.com/ecmwf/anemoi-core/commit/1fbd5252ef1400eb4bbe5bfbbb171dad1d652c63))
+* **models,training:** Remove unnecessary torch-geometric maximum version ([#326](https://github.com/ecmwf/anemoi-core/issues/326)) ([fe93ea8](https://github.com/ecmwf/anemoi-core/commit/fe93ea8feb379147a9f9e5c5358ea8144855dc77))
+* Move scaler to device in scale ([#317](https://github.com/ecmwf/anemoi-core/issues/317)) ([1592d09](https://github.com/ecmwf/anemoi-core/commit/1592d09f0915dddba7dcfc1c11897e0cae5cb6d0))
+* Remove activation entry from MLP noise block ([#340](https://github.com/ecmwf/anemoi-core/issues/340)) ([2d060f5](https://github.com/ecmwf/anemoi-core/commit/2d060f5e3382454b06c6369141942b8d6367fb4b))
+* Rework Loss Scalings to provide better modularity ([#52](https://github.com/ecmwf/anemoi-core/issues/52)) ([162b906](https://github.com/ecmwf/anemoi-core/commit/162b9062882c321a4a265b0cf561be3f141ac97a))
+* **training, models:** Update interpolator to work with new features ([#322](https://github.com/ecmwf/anemoi-core/issues/322)) ([cfdc99f](https://github.com/ecmwf/anemoi-core/commit/cfdc99f984f0038b16cb96d73d02a25284af717e))
+* **training:** Bump anemoi-graphs version to 0.5.2 ([#276](https://github.com/ecmwf/anemoi-core/issues/276)) ([9b8ec13](https://github.com/ecmwf/anemoi-core/commit/9b8ec13b56f0a18ac887c754d5d95a7953b2625d))
+* **training:** Explicit Batch invariance ([#318](https://github.com/ecmwf/anemoi-core/issues/318)) ([45f6e15](https://github.com/ecmwf/anemoi-core/commit/45f6e15183dbf61ad259b7ca5ed35d94395d237c))
+* **training:** No logging variable metadata to mlflow ([#304](https://github.com/ecmwf/anemoi-core/issues/304)) ([4f7c2c9](https://github.com/ecmwf/anemoi-core/commit/4f7c2c9c75ae6e67a148699a317528cd7651bf46))
+* Update defaults for mlflow logging ([#333](https://github.com/ecmwf/anemoi-core/issues/333)) ([5560581](https://github.com/ecmwf/anemoi-core/commit/556058167439ae29e6c9559d67f2e01df8466158))
+
+
+### Documentation
+
+* Downloading era5 o96 dataset ([#307](https://github.com/ecmwf/anemoi-core/issues/307)) ([b9e2d24](https://github.com/ecmwf/anemoi-core/commit/b9e2d24702132e43f160a428ccad88b7584fcabe))
+* Fix minor mistakes in CRPS user guide. ([#264](https://github.com/ecmwf/anemoi-core/issues/264)) ([52d9a2e](https://github.com/ecmwf/anemoi-core/commit/52d9a2e5e0cef82b65b604ed2dc55016a48aeaa2))
+
+## [0.4.0](https://github.com/ecmwf/anemoi-core/compare/training-0.3.3...training-0.4.0) (2025-04-16)
+
+
+### ⚠ BREAKING CHANGES
+
+* **models,training:** temporal interpolation ([#153](https://github.com/ecmwf/anemoi-core/issues/153))
+* **config:** Improved configuration and data structures ([#79](https://github.com/ecmwf/anemoi-core/issues/79))
+
+### Features
+
+* Add a CLI to dump the Hydra configuration files into a single YAML file. ([#137](https://github.com/ecmwf/anemoi-core/issues/137)) ([ef1e76e](https://github.com/ecmwf/anemoi-core/commit/ef1e76e2e15bb412adb184e1b33e003590c72e8a))
+* Add EarlyStopping Wrapper ([#130](https://github.com/ecmwf/anemoi-core/issues/130)) ([21d06be](https://github.com/ecmwf/anemoi-core/commit/21d06be94b5ea09889777038da749ee167cf3f3d))
+* Add the possibility to train a model with a dry MLflow run ID ([#164](https://github.com/ecmwf/anemoi-core/issues/164)) ([9849d21](https://github.com/ecmwf/anemoi-core/commit/9849d211fcb03fcbb76fcdd3ef6e97e86f1e69b4))
+* **config:** Improved configuration and data structures ([#79](https://github.com/ecmwf/anemoi-core/issues/79)) ([1f7812b](https://github.com/ecmwf/anemoi-core/commit/1f7812b559b51d842852df29ace7dda6d0f66ef2))
+* edge post-processor ([#199](https://github.com/ecmwf/anemoi-core/issues/199)) ([1450de7](https://github.com/ecmwf/anemoi-core/commit/1450de739be9988cdb23fbdb23a0463859066e7c))
+* **graphs:** migrate edge builders to torch-cluster ([#56](https://github.com/ecmwf/anemoi-core/issues/56)) ([f67da66](https://github.com/ecmwf/anemoi-core/commit/f67da664c18762e4c8a8cf0af9d4e97ec7315454))
+* Kcrps  ([#182](https://github.com/ecmwf/anemoi-core/issues/182)) ([8bbe898](https://github.com/ecmwf/anemoi-core/commit/8bbe89839e2eff3fcbc35613eb92920d4afc3276))
+* make colormaps configurable for groups of variable ([#124](https://github.com/ecmwf/anemoi-core/issues/124)) ([83d72e1](https://github.com/ecmwf/anemoi-core/commit/83d72e17b5c8017a1d9a47f75e0848e0bbb080a3))
+* **mlflow:** Make direct endpoint calls robust ([#186](https://github.com/ecmwf/anemoi-core/issues/186)) ([77bd890](https://github.com/ecmwf/anemoi-core/commit/77bd890004ea591861ec1efe6732ea1599008985))
+* **models,training:** temporal interpolation ([#153](https://github.com/ecmwf/anemoi-core/issues/153)) ([ea644ce](https://github.com/ecmwf/anemoi-core/commit/ea644ce1c9aef902333d9cbb30bcde0a3746fbcc))
+* **models:** adding leaky boundings ([#256](https://github.com/ecmwf/anemoi-core/issues/256)) ([426e860](https://github.com/ecmwf/anemoi-core/commit/426e86048d6c0a03750fb0e205890841c27c8148))
+* **training:** Add initial TimeLimit callback ([#115](https://github.com/ecmwf/anemoi-core/issues/115)) ([41ff583](https://github.com/ecmwf/anemoi-core/commit/41ff5830dc0ba08aaa86e052a1a0aac8c4498c7a))
+
+
+### Bug Fixes
+
+* --longtests not available ([#200](https://github.com/ecmwf/anemoi-core/issues/200)) ([9dfec0a](https://github.com/ecmwf/anemoi-core/commit/9dfec0a3bd2043e646cc49b5302fcc4d669e4a41))
+* Checkpoint path check for multiple tasks/GPUs training ([#242](https://github.com/ecmwf/anemoi-core/issues/242)) ([449f8bd](https://github.com/ecmwf/anemoi-core/commit/449f8bd6044043fc46160b602762785b475cd1ce))
+* **configs,schemas:** hierarchical schemas ([#221](https://github.com/ecmwf/anemoi-core/issues/221)) ([2d4a54d](https://github.com/ecmwf/anemoi-core/commit/2d4a54d3c6ed2d41fd6cbf2ef3ac57b9efb2f968))
+* correct config comment regarding config_validation flag ([#245](https://github.com/ecmwf/anemoi-core/issues/245)) ([d02e0bb](https://github.com/ecmwf/anemoi-core/commit/d02e0bb2a9bf1700de90c8d862f80a510f03eceb))
+* dataset schema too defined too strictly ([#143](https://github.com/ecmwf/anemoi-core/issues/143)) ([4792ee1](https://github.com/ecmwf/anemoi-core/commit/4792ee145a3bda05f934180485ddb7b6e3bb25d4))
+* datashader new release test ([#104](https://github.com/ecmwf/anemoi-core/issues/104)) ([e9c0701](https://github.com/ecmwf/anemoi-core/commit/e9c0701bce9e5dfff7184fc6210092b82b9386a6))
+* dry run forking ([#260](https://github.com/ecmwf/anemoi-core/issues/260)) ([a32cccd](https://github.com/ecmwf/anemoi-core/commit/a32cccd3179b049979b500ad878480ae5e46d050))
+* **graphs,training:** skip hidden attributes ([#176](https://github.com/ecmwf/anemoi-core/issues/176)) ([468c45a](https://github.com/ecmwf/anemoi-core/commit/468c45a8a8ccee6f4a11c4ddf3fe4a7220235d08))
+* lam rollout ([#213](https://github.com/ecmwf/anemoi-core/issues/213)) ([6f78387](https://github.com/ecmwf/anemoi-core/commit/6f78387da08237b7a63b84575e8cb6c19b254493))
+* pydantic schemas move ([#228](https://github.com/ecmwf/anemoi-core/issues/228)) ([6bca9bc](https://github.com/ecmwf/anemoi-core/commit/6bca9bc66ff54ac294d97793b8cebed1cd1bb8a4))
+* remove pydantic schemas from checkpoint pickled objects ([#237](https://github.com/ecmwf/anemoi-core/issues/237)) ([ecb945a](https://github.com/ecmwf/anemoi-core/commit/ecb945ad7df226d16ed42b10123372741c5748a5))
+* Rename model_run_ids as trajectory_ids ([#216](https://github.com/ecmwf/anemoi-core/issues/216)) ([e5e942d](https://github.com/ecmwf/anemoi-core/commit/e5e942d001640b73a29d5d6156364f3bd99fc1e5))
+* **training,configs:** update enc-dec config ([#125](https://github.com/ecmwf/anemoi-core/issues/125)) ([beb8c69](https://github.com/ecmwf/anemoi-core/commit/beb8c69e7c58ae04124030ddf3b080b9c4e6b7e1))
+* **training,schema:** error when using ReweightedGraphNodeAttribute ([#169](https://github.com/ecmwf/anemoi-core/issues/169)) ([a6313ef](https://github.com/ecmwf/anemoi-core/commit/a6313ef37ec8e08fe0fbcc58b99fb098774b0229))
+* **training:** added weights_only=False flag to torch.load to avoid crashes in torch 2.6 ([#205](https://github.com/ecmwf/anemoi-core/issues/205)) ([02b5117](https://github.com/ecmwf/anemoi-core/commit/02b5117fb2f455fea943ffccc76117d2e0d514f8))
+* **training:** Rework Combined Loss ([#103](https://github.com/ecmwf/anemoi-core/issues/103)) ([b63f1aa](https://github.com/ecmwf/anemoi-core/commit/b63f1aa4e6f154898d84310cb03cf244b322efa4))
+* update stretched.yaml config to be consistent with schema ([#195](https://github.com/ecmwf/anemoi-core/issues/195)) ([21255ac](https://github.com/ecmwf/anemoi-core/commit/21255ac8e535889ad47ccada2bf4a27047c27021))
+* update to null and bump versions ([#263](https://github.com/ecmwf/anemoi-core/issues/263)) ([b4507fb](https://github.com/ecmwf/anemoi-core/commit/b4507fbf926a01f0e042cb61fc35b3901243ddc0))
+* updates to schemas to correct minor pydantic issues ([#144](https://github.com/ecmwf/anemoi-core/issues/144)) ([4e51c17](https://github.com/ecmwf/anemoi-core/commit/4e51c178c72c6853cf223e81609e0a91b183a277))
+
+
+### Documentation
+
+* Add diagnostics to schema docs ([#159](https://github.com/ecmwf/anemoi-core/issues/159)) ([42c5706](https://github.com/ecmwf/anemoi-core/commit/42c570625cfe445441f18e74827b8c1526ff1782))
+* Add reference in training getting started guide for intersphinx ([#220](https://github.com/ecmwf/anemoi-core/issues/220)) ([f1d5e1f](https://github.com/ecmwf/anemoi-core/commit/f1d5e1f07c7a92e7152f0a392a046537bc718cab))
+* Add subheadings to schema doc page ([#149](https://github.com/ecmwf/anemoi-core/issues/149)) ([d3c7de9](https://github.com/ecmwf/anemoi-core/commit/d3c7de905bced2dc9e75a92de4e9abf848936e62))
+* fix documentation to refer to anemoi datasets instead of zarr datasets ([#154](https://github.com/ecmwf/anemoi-core/issues/154)) ([ad062b2](https://github.com/ecmwf/anemoi-core/commit/ad062b22cdd05354bc010eabbf8ffa806def081c))
+* **models:** Docathon  ([#202](https://github.com/ecmwf/anemoi-core/issues/202)) ([5dba9d3](https://github.com/ecmwf/anemoi-core/commit/5dba9d34d65d4331dabd19355c7a31f7f1468fbf))
+* **training:** add ADR into docs/ ([#168](https://github.com/ecmwf/anemoi-core/issues/168)) ([ee4da88](https://github.com/ecmwf/anemoi-core/commit/ee4da886c32f1edbc197215780bf84dcd323e172))
+* **training:** Docathon ([#201](https://github.com/ecmwf/anemoi-core/issues/201)) ([e69430f](https://github.com/ecmwf/anemoi-core/commit/e69430f8c1ba8e7de50cd99f202e3f4876b806e0))
+* Update docs for kcrps. ([#258](https://github.com/ecmwf/anemoi-core/issues/258)) ([79cbd1d](https://github.com/ecmwf/anemoi-core/commit/79cbd1d5e5f0f5aa82ce712bed474a6ad99f17e8))
+* use new logo ([#140](https://github.com/ecmwf/anemoi-core/issues/140)) ([c269cea](https://github.com/ecmwf/anemoi-core/commit/c269cea3c84f2e35ef0a318e0cd1b769d285177c))
+
+## [0.3.3](https://github.com/ecmwf/anemoi-core/compare/training-0.3.2...training-0.3.3) (2025-02-05)
+
+
+### Features
+
+* make flash attention configurable ([#60](https://github.com/ecmwf/anemoi-core/issues/60)) ([41fcab6](https://github.com/ecmwf/anemoi-core/commit/41fcab6335b334fdbebeb944c904cdbea6388889))
+* Model Freezing ❄️  ([#61](https://github.com/ecmwf/anemoi-core/issues/61)) ([54e42cf](https://github.com/ecmwf/anemoi-core/commit/54e42cf42a47e00be96b464f501f6a462cd1bca4))
+* **models:** normalization layers ([#47](https://github.com/ecmwf/anemoi-core/issues/47)) ([0e1c7c4](https://github.com/ecmwf/anemoi-core/commit/0e1c7c4840138debf877bb954b45f4c3a1cd0e33))
+
+
+### Bug Fixes
+
+* cancel RTD builds on no change ([#97](https://github.com/ecmwf/anemoi-core/issues/97)) ([36522d8](https://github.com/ecmwf/anemoi-core/commit/36522d87cdd95a5cb54b4c865eca67a64e22fffa))
+* only load shards of grid into cpu mem if possible ([#83](https://github.com/ecmwf/anemoi-core/issues/83)) ([abbef4b](https://github.com/ecmwf/anemoi-core/commit/abbef4bf505af553584d9e0d4825db544d1c9ca7))
+* pin dask version to 2024.12.1  ([#94](https://github.com/ecmwf/anemoi-core/issues/94)) ([074c0f2](https://github.com/ecmwf/anemoi-core/commit/074c0f226bf6541df977e43eff626a68d2f1f1fe))
+* **training:** profiler 'Model Summary' works when sharding models over multiple GPUs ([#90](https://github.com/ecmwf/anemoi-core/issues/90)) ([9d9e89a](https://github.com/ecmwf/anemoi-core/commit/9d9e89a8fd6b90ecd62f799d942c84a4e984b9ed))
+* update configs to avoid DeprecationWarning ([#53](https://github.com/ecmwf/anemoi-core/issues/53)) ([3560290](https://github.com/ecmwf/anemoi-core/commit/356029039e8406bc02a2b22f56107babbf2e7551))
+
+
+### Documentation
+
+* **graphs:** Refactor anemoi-graphs documentation ([#49](https://github.com/ecmwf/anemoi-core/issues/49)) ([29942b6](https://github.com/ecmwf/anemoi-core/commit/29942b6c088c7a2c6ff3f8ac13277041086cda9f))
+* Improve installation docs ([#91](https://github.com/ecmwf/anemoi-core/issues/91)) ([0b5f8fb](https://github.com/ecmwf/anemoi-core/commit/0b5f8fb8b93555d76ebe3316c430121350bf5243))
+* point RTD to right subfolder ([5a80cb6](https://github.com/ecmwf/anemoi-core/commit/5a80cb6047e864ea97bed06a76ddc54507e5fcbe))
+* Tidy for core ([b24c521](https://github.com/ecmwf/anemoi-core/commit/b24c521c447272afd1b209745b24d16794cdb85a))
+
+## [Unreleased](https://github.com/ecmwf/anemoi-training/compare/0.3.2...HEAD)
+
+### Fixed
+
+- Profilers 'Model Summary' feature works when the model is sharded across GPUs [#90](https://github.com/ecmwf/anemoi-core/pull/90)
+
+## [0.3.2 - Multiple Fixes, Checkpoint updates, Stretched-grid/LAM updates](https://github.com/ecmwf/anemoi-training/compare/0.3.1...0.3.2) - 2024-12-19
+
+### Fixed
+
+- Not update NaN-weight-mask for loss function when using remapper and no imputer [#178](https://github.com/ecmwf/anemoi-training/pull/178)
+- Dont crash when using the profiler if certain env vars arent set [#180](https://github.com/ecmwf/anemoi-training/pull/180)
+- Remove saving of metadata to training checkpoint [#57](https://github.com/ecmwf/anemoi-training/pull/190)
+- Fixes to callback plots [#182] (power spectrum large numpy array error + precip cmap for cases where precip is prognostic).
+- GraphTrainableParameters callback will log a warning when no trainable parameters are specified  [#173](https://github.com/ecmwf/anemoi-training/pull/173)
+- Fixes to checkpoint saving - ensure last checkpoint if saving when using max_steps [#191] (https://github.com/ecmwf/anemoi-training/pull/191)
+- Identify stretched grid models based on graph rather than configuration file [#204](https://github.com/ecmwf/anemoi-training/pull/204)
+
+### Added
+
+- Introduce variable to configure: transfer_learning -> bool, True if loading checkpoint in a transfer learning setting.
+-
+<b> TRANSFER LEARNING</b>: enabled new functionality. You can now load checkpoints from different models and different training runs.
+- Introduce (optional) variable to configure: transfer_learning -> bool, True if loading checkpoint in a transfer learning setting.
+- <b> TRANSFER LEARNING</b>: enabled new functionality. You can now load checkpoints from different models and different training runs.
+- Effective batch size: `(config.dataloader.batch_size["training"] * config.hardware.num_gpus_per_node * config.hardware.num_nodes) // config.hardware.num_gpus_per_model`.
+  Used for experiment reproducibility across different computing configurations.
+- Added a check for the variable sorting on pre-trained/finetuned models [#120](https://github.com/ecmwf/anemoi-training/pull/120)
+- Added default configuration files for stretched grid and limited area model experiments [173](https://github.com/ecmwf/anemoi-training/pull/173)
+- Added new metrics for stretched grid models to track losses inside/outside the regional domain [#199](https://github.com/ecmwf/anemoi-training/pull/199)
+- <b> Model Freezing ❄️</b>: enabled new functionality. You can now Freeze parts of your model by specifying a list of submodules to freeze with the new config parameter: submodules_to_freeze.
+- Introduce (optional) variable to configure: submodules_to_freeze -> List[str], list of submodules to freeze.
+- Add supporting arrrays (numpy) to checkpoint
+- Support for masking out unconnected nodes in LAM [#171](https://github.com/ecmwf/anemoi-training/pull/171)
+- Improved validation metrics, allow 'all' to be scaled [#202](https://github.com/ecmwf/anemoi-training/pull/202)
+- Added default configuration files for hierarchical processor [175](https://github.com/ecmwf/anemoi-training/pull/175)
+
+### Changed
+
+### Removed
+
+- Removed the resolution config entry [#120](https://github.com/ecmwf/anemoi-training/pull/120)
+
+## [0.3.1 - AIFS v0.3 Compatibility](https://github.com/ecmwf/anemoi-training/compare/0.3.0...0.3.1) - 2024-11-28
+
+### Changed
+
+- Perform full shuffle of training dataset [#153](https://github.com/ecmwf/anemoi-training/pull/153)
+
+### Fixed
+
+- Update `n_pixel` used by datashader to better adapt across resolutions [#152](https://github.com/ecmwf/anemoi-training/pull/152)
+- Fixed bug in power spectra plotting for the n320 resolution.
+- Allow histogram and spectrum plot for one variable [#165](https://github.com/ecmwf/anemoi-training/pull/165)
+
+### Added
+
+- Introduce variable to configure (Cosine Annealing) optimizer warm up [#155](https://github.com/ecmwf/anemoi-training/pull/155)
+- Add reader groups to reduce CPU memory usage and increase dataloader throughput [#76](https://github.com/ecmwf/anemoi-training/pull/76)
+- Bump `anemoi-graphs` version to 0.4.1 [#159](https://github.com/ecmwf/anemoi-training/pull/159)
+
+## [0.3.0 - Loss & Callback Refactors](https://github.com/ecmwf/anemoi-training/compare/0.2.2...0.3.0) - 2024-11-14
+
+### Fixed
+
+- Rename loss_scaling to variable_loss_scaling [#138](https://github.com/ecmwf/anemoi-training/pull/138)
+- Refactored callbacks. [#60](https://github.com/ecmwf/anemoi-training/pulls/60)
+  - Updated docs [#115](https://github.com/ecmwf/anemoi-training/pull/115)
+  - Fix enabling LearningRateMonitor [#119](https://github.com/ecmwf/anemoi-training/pull/119)
+
+- Refactored rollout [#87](https://github.com/ecmwf/anemoi-training/pulls/87)
+  - Enable longer validation rollout than training
+
+- Expand iterables in logging [#91](https://github.com/ecmwf/anemoi-training/pull/91)
+  - Save entire config in mlflow
+
+
+### Added
+
+- Included more loss functions and allowed configuration [#70](https://github.com/ecmwf/anemoi-training/pull/70)
+- Include option to use datashader and optimised asyncronohous callbacks [#102](https://github.com/ecmwf/anemoi-training/pull/102)
+  - Fix that applies the metric_ranges in the post-processed variable space [#116](https://github.com/ecmwf/anemoi-training/pull/116)
+
+- Allow updates to scalars [#137](https://github.com/ecmwf/anemoi-training/pulls/137)
+  - Add without subsetting in ScaleTensor
+
+- Sub-hour datasets [#63](https://github.com/ecmwf/anemoi-training/pull/63)
+- Add synchronisation workflow [#92](https://github.com/ecmwf/anemoi-training/pull/92)
+- Feat: Anemoi Profiler compatible with mlflow and using Pytorch (Kineto) Profiler for memory report [38](https://github.com/ecmwf/anemoi-training/pull/38/)
+- Feat: Save a gif for longer rollouts in validation [#65](https://github.com/ecmwf/anemoi-training/pull/65)
+- New limited area config file added, limited_area.yaml. [#134](https://github.com/ecmwf/anemoi-training/pull/134/)
+- New stretched grid config added, stretched_grid.yaml [#133](https://github.com/ecmwf/anemoi-training/pull/133)
+- Functionality to change the weight attribute of nodes in the graph at the start of training without re-generating the graph. [#136] (https://github.com/ecmwf/anemoi-training/pull/136)
+- Custom System monitor for Nvidia and AMD GPUs [#147](https://github.com/ecmwf/anemoi-training/pull/147)
+
+### Changed
+
+- Renamed frequency keys in callbacks configuration. [#118](https://github.com/ecmwf/anemoi-training/pull/118)
+- Modified training configuration to support max_steps and tied lr iterations to max_steps by default [#67](https://github.com/ecmwf/anemoi-training/pull/67)
+- Merged node & edge trainable feature callbacks into one. [#135](https://github.com/ecmwf/anemoi-training/pull/135)
+- Increase the default MlFlow HTTP max retries [#111](https://github.com/ecmwf/anemoi-training/pull/111)
+
+### Removed
+
+## [0.2.2 - Maintenance: pin python <3.13](https://github.com/ecmwf/anemoi-training/compare/0.2.1...0.2.2) - 2024-10-28
+
+### Changed
+
+- Lock python version <3.13 [#107](https://github.com/ecmwf/anemoi-training/pull/107)
+
+## [0.2.1 - Bugfix: resuming mlflow runs](https://github.com/ecmwf/anemoi-training/compare/0.2.0...0.2.1) - 2024-10-24
+
+### Added
+
+- Mlflow-sync to include new tag for server to server syncing [#83](https://github.com/ecmwf/anemoi-training/pull/83)
+- Mlflow-sync to include functionality to resume and fork server2server runs [#83](https://github.com/ecmwf/anemoi-training/pull/83)
+- Rollout training for Limited Area Models. [#79](https://github.com/ecmwf/anemoi-training/pulls/79)
+- Feature: New `Boolean1DMask` class. Enables rollout training for limited area models. [#79](https://github.com/ecmwf/anemoi-training/pulls/79)
+
+### Fixed
+
+- Fix pre-commit regex
+- Mlflow-sync to handle creation of new experiments in the remote server [#83] (https://github.com/ecmwf/anemoi-training/pull/83)
+- Fix for multi-gpu when using mlflow due to refactoring of _get_mlflow_run_params function [#99] (https://github.com/ecmwf/anemoi-training/pull/99)
+- ci: fix pyshtools install error (#100) https://github.com/ecmwf/anemoi-training/pull/100
+- Mlflow-sync to handle creation of new experiments in the remote server [#83](https://github.com/ecmwf/anemoi-training/pull/83)
+- Fix for multi-gpu when using mlflow due to refactoring of _get_mlflow_run_params function [#99](https://github.com/ecmwf/anemoi-training/pull/99)
+- ci: fix pyshtools install error [#100](https://github.com/ecmwf/anemoi-training/pull/100)
+- Fix `__version__` import in init
+
+### Changed
+
+- Update copyright notice
+
+## [0.2.0 - Feature release](https://github.com/ecmwf/anemoi-training/compare/0.1.0...0.2.0) - 2024-10-16
+
+- Make pin_memory of the Dataloader configurable (#64)
+
+### Added
+
+- Add anemoi-transform link to documentation
+- Codeowners file (#56)
+- Changelog merge strategy (#56)
+- Contributors file (#106)
+
+#### Miscellaneous
+
+- Introduction of remapper to anemoi-models leads to changes in the data indices. Some preprocessors cannot be applied in-place anymore.
+
+- Variable Bounding as configurable model layers [#13](https://github.com/ecmwf/anemoi-models/issues/13)
+
+
+#### Functionality
+
+- Enable the callback for plotting a histogram for variables containing NaNs
+- Enforce same binning for histograms comparing true data to predicted data
+- Fix: Inference checkpoints are now saved according the frequency settings defined in the config [#37](https://github.com/ecmwf/anemoi-training/pull/37)
+- Feature: Add configurable models [#50](https://github.com/ecmwf/anemoi-training/pulls/50)
+- Feature: Authentication support for mlflow sync - [#51](https://github.com/ecmwf/anemoi-training/pull/51)
+- Feature: Support training for datasets with missing time steps [#48](https://github.com/ecmwf/anemoi-training/pulls/48)
+- Feature: `AnemoiMlflowClient`, an mlflow client with authentication support [#86](https://github.com/ecmwf/anemoi-training/pull/86)
+- Long Rollout Plots
+- Mask NaN values in training loss function [#72](https://github.com/ecmwf/anemoi-training/pull/72) and [#271](https://github.com/ecmwf-lab/aifs-mono/issues/271)
+
+### Fixed
+
+- Fix `TypeError` raised when trying to JSON serialise `datetime.timedelta` object - [#43](https://github.com/ecmwf/anemoi-training/pull/43)
+- Bugfixes for CI (#56)
+- Fix `mlflow` subcommand on python 3.9 [#62](https://github.com/ecmwf/anemoi-training/pull/62)
+- Show correct subcommand in MLFlow - Addresses [#39](https://github.com/ecmwf/anemoi-training/issues/39) in [#61](https://github.com/ecmwf/anemoi-training/pull/61)
+- Fix interactive multi-GPU training [#82](https://github.com/ecmwf/anemoi-training/pull/82)
+- Allow 500 characters in mlflow logging [#88](https://github.com/ecmwf/anemoi-training/pull/88)
+
+### Changed
+
+- Updated configuration examples in documentation and corrected links - [#46](https://github.com/ecmwf/anemoi-training/pull/46)
+- Remove credential prompt from mlflow login, replace with seed refresh token via web - [#78](https://github.com/ecmwf/anemoi-training/pull/78)
+- Update CODEOWNERS
+- Change how mlflow measures CPU Memory usage - [94](https://github.com/ecmwf/anemoi-training/pull/94)
+
+## [0.1.0 - Anemoi training - First release](https://github.com/ecmwf/anemoi-training/releases/tag/0.1.0) - 2024-08-16
+
+### Added
+
+#### Subcommands
+
+- Subcommand for training `anemoi-training train`
+- Subcommand for config generation of configs
+- Subcommand for mlflow: login and sync
+- Subcommand for checkpoint handling
+
+#### Functionality
+
+- Searchpaths for Hydra configs, to enable configs in CWD, `ANEMOI_CONFIG_PATH` env, and `.config/anemoi/training` in addition to package defaults
+- MlFlow token authentication
+- Configurable pressure level scaling
+
+#### Continuous Integration / Deployment
+
+- Downstream CI to test all dependencies with changes
+- Changelog Status check
+- Readthedocs PR builder
+- Changelog Release Updater Workflow
+
+#### Miscellaneous
+
+- Extended ruff Ruleset
+- Added Docsig pre-commit hook
+- `__future__` annotations for typehints
+- Added Typehints where missing
+- Added Changelog
+- Correct errors in callback plots
+- fix error in the default config
+- example slurm config
+- ability to configure precip-type plots
+
+### Changed
+
+#### Move to Anemoi Ecosystem
+
+- Fixed PyPI packaging
+- Use of Anemoi models
+- Use of Anemoi graphs
+- Adjusted tests to work with new Anemoi ecosystem
+- Adjusted configs to reasonable common defaults
+
+#### Functionality
+
+- Changed hardware-specific keys from configs to `???` to trigger "missing"
+- `__len__` of NativeGridDataset
+- Configurable dropout in attention layer
+
+#### Docs
+
+- First draft on Read the Docs
+- Fixed docstrings
+
+#### Miscellaneous
+
+- Moved callbacks into folder to fascilitate future refactor
+- Adjusted PyPI release infrastructure to common ECMWF workflow
+- Bumped versions in Pre-commit hooks
+- Fix crash when logging hyperparameters with missing values in the config
+- Fixed "null" tracker metadata when tracking is disabled, now returns an empty dict
+- Pinned numpy<2 until we can test all migration
+- (ci): path ignore of docs for downstream ci
+- (ci): remove yaml anchor, unsupported by Github
+- ci: make python QA reusable
+- ci: permissions on changelog updater
+
+### Removed
+
+- Dependency on mlflow-export-import
+- Specific user configs
+- **len** function of NativeGridDataset as it lead to bugs
+
+<!-- Add Git Diffs for Links above -->

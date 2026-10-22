@@ -1,0 +1,385 @@
+# (C) Copyright 2024-2026 Anemoi contributors.
+#
+# This software is licensed under the terms of the Apache Licence Version 2.0
+# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
+# In applying this licence, ECMWF does not waive the privileges and immunities
+# granted to it by virtue of its status as an intergovernmental organisation
+# nor does it submit to any jurisdiction.
+
+
+import logging
+from functools import lru_cache
+
+from omegaconf import DictConfig
+from omegaconf import OmegaConf
+
+from anemoi.transform.variables import Variable
+
+LOG = logging.getLogger(__name__)
+GROUP_SPEC = str | list[str] | bool
+
+
+def extract_variables_metadata_from_checkpoint(
+    checkpoint: dict,
+    dataset_names: dict[str, object],
+) -> dict[str, dict] | None:
+    """Extract per-dataset variables_metadata from a loaded checkpoint."""
+    dataset_metadata = checkpoint.get("hyper_parameters", {}).get("metadata", {}).get("dataset", {})
+    ckpt_variables_metadata = {}
+    for dataset_name in dataset_names:
+        ds_inference = dataset_metadata.get(dataset_name, {})
+        vm = ds_inference.get("variables_metadata")
+        if vm is not None:
+            ckpt_variables_metadata[dataset_name] = vm
+    return ckpt_variables_metadata or None
+
+
+def check_variables_metadata_compatibility(
+    ckpt_variables_metadata: dict[str, dict] | None,
+    dataset_metadata: dict[str, dict],
+    **options: object,
+) -> None:
+    """Check unit compatibility between checkpoint and dataset variables_metadata.
+
+    For each dataset present in the checkpoint's variables_metadata, compares the units
+    and other properties against the current dataset's variables_metadata using
+    ``Variable.check_compatibility``.
+
+    Parameters
+    ----------
+    ckpt_variables_metadata : dict[str, dict] | None
+        Per-dataset variables_metadata from the checkpoint.
+        Maps dataset names to dicts of {variable_name: {metadata...}}.
+    dataset_metadata : dict[str, dict]
+        Per-dataset metadata from the current datamodule. Each entry is expected to have
+        a ``"variables_metadata"`` key.
+    **options : object
+        Additional keyword arguments forwarded to ``Variable.check_compatibility``
+        (e.g. ``ignore_units``, ``ignore_processing_period``).
+
+    Raises
+    ------
+    ValueError
+        If variables have incompatible units between checkpoint and dataset.
+
+    Warns
+    -----
+    If variables_metadata is missing from either the checkpoint or the current dataset,
+    a warning is logged and the check is skipped.
+    """
+    if ckpt_variables_metadata is None:
+        LOG.warning(
+            "Checkpoint does not contain variables_metadata. Skipping unit compatibility check.",
+        )
+        return
+
+    for dataset_name, ckpt_var_meta in ckpt_variables_metadata.items():
+        ds_meta = dataset_metadata.get(dataset_name, {})
+        ds_var_meta = ds_meta.get("variables_metadata")
+
+        if ds_var_meta is None:
+            LOG.warning(
+                "Dataset '%s' does not contain variables_metadata. "
+                "Skipping unit compatibility check for this dataset.",
+                dataset_name,
+            )
+            continue
+
+        ckpt_vars = {name: Variable.from_dict(name, data) for name, data in ckpt_var_meta.items()}
+        ds_vars = {name: Variable.from_dict(name, data) for name, data in ds_var_meta.items()}
+
+        try:
+            Variable.check_compatibility(ckpt_vars, ds_vars, **options)
+        except ValueError as e:
+            msg = f"Variable compatibility check failed for dataset '{dataset_name}': {e}"
+            raise ValueError(msg) from e
+
+
+def check_loss_variable_units_compatibility(
+    predicted_variables: list[str],
+    target_variables: list[str],
+    variables_metadata: dict[str, dict] | None,
+    **options: object,
+) -> None:
+    """Check unit compatibility between paired predicted and target variables.
+
+    When a loss function maps predicted variables to different target variables
+    (e.g. model output ``tp`` compared against observation ``imerg``), this function
+    verifies that the units of each predicted/target pair are compatible.
+
+    Parameters
+    ----------
+    predicted_variables : list[str]
+        Names of the predicted (model output) variables.
+    target_variables : list[str]
+        Names of the target (observation) variables.
+    variables_metadata : dict[str, dict] | None
+        Per-variable metadata dict keyed by variable name.
+    **options : object
+        Additional keyword arguments forwarded to ``Variable.compatible``
+        (e.g. ``ignore_units``, ``ignore_processing_period``).
+    """
+    if variables_metadata is None:
+        LOG.warning(
+            "No variables_metadata available. Skipping loss variable unit compatibility check.",
+        )
+        return
+
+    for pred_var, target_var in zip(predicted_variables, target_variables, strict=True):
+
+        if pred_var == target_var:
+            continue
+
+        if pred_var not in variables_metadata:
+            LOG.warning(
+                "Predicted variable '%s' not found in variables_metadata. "
+                "Skipping unit check for pair ('%s', '%s').",
+                pred_var,
+                pred_var,
+                target_var,
+            )
+            continue
+
+        if target_var not in variables_metadata:
+            LOG.warning(
+                "Target variable '%s' not found in variables_metadata. Skipping unit check for pair ('%s', '%s').",
+                target_var,
+                pred_var,
+                target_var,
+            )
+            continue
+
+        pred_variable = Variable.from_dict(pred_var, variables_metadata[pred_var])
+        # Build the target variable under the predicted variable's name so that
+        # Variable.compatible()'s name assertion passes (we are comparing metadata
+        # properties, not variable identity).
+        target_variable = Variable.from_dict(pred_var, variables_metadata[target_var])
+
+        compatible, reason = pred_variable.compatible(target_variable, return_reason=True, **options)
+        if not compatible:
+            msg = (
+                f"Loss variable mismatch: predicted variable '{pred_var}' and "
+                f"target variable '{target_var}' are not compatible: {reason}"
+            )
+            raise ValueError(msg)
+
+
+@lru_cache
+def _crack_variable_name(variable_name: str) -> tuple[str, str | None]:
+    """Attempt to crack the variable name into parameter name and level.
+
+    If cannot split, will return variable_name unchanged, and None
+
+    Parameters
+    ----------
+    variable_name : str
+        Name of the variable.
+
+    Returns
+    -------
+    parameter : str
+        Parameter reference which corresponds to the variable_name without the variable level.
+        If cannot be split, will be variable_name unchanged.
+    variable_level : str | None
+        Variable level, i.e. pressure level or model level.
+        If cannot be split, will be None.
+    """
+    split = variable_name.split("_")
+    if len(split) > 1 and split[-1].isdigit():
+        return variable_name[: -len(split[-1]) - 1], int(split[-1])
+
+    return variable_name, None
+
+
+class ExtractVariableGroupAndLevel:
+    """Extract the group and level of a variable from dataset metadata and training-config file.
+
+    Extract variables group from the training-config file and variable level from the dataset metadata.
+    If dataset metadata is not available, the variable level is extracted from the variable name.
+
+    Parameters
+    ----------
+    variable_groups : dict
+        Dictionary with groups as keys and variable names as values
+    metadata_variables : dict, optional
+        Dictionary with variable names as keys and metadata as values, by default None
+    """
+
+    def __init__(
+        self,
+        variable_groups: dict[str, GROUP_SPEC | dict[str, GROUP_SPEC]],
+        metadata_variables: dict[str, dict | Variable] | None = None,
+    ) -> None:
+
+        if isinstance(variable_groups, DictConfig):
+            variable_groups = OmegaConf.to_container(variable_groups, resolve=True)
+
+        variable_groups = variable_groups.copy()
+
+        assert "default" in variable_groups, "Default group not defined in variable_groups"
+        self.default_group = variable_groups.pop("default")
+
+        self.variable_groups = variable_groups
+
+        self.metadata_variables: dict[str, Variable] = {
+            name: Variable.from_dict(name, val) if not isinstance(val, Variable) else val
+            for name, val in (metadata_variables or {}).items()
+        }
+
+    def get_group_specification(self, group_name: str) -> GROUP_SPEC | dict[str, GROUP_SPEC]:
+        """Get the specification of a group."""
+        return self.variable_groups[group_name]
+
+    def get_group(self, variable_name: str) -> str:
+        """Get the group of a variable.
+
+        Parameters
+        ----------
+        variable_name : str
+            Name of the variable.
+
+        Returns
+        -------
+        group : str
+            Group of the variable
+        """
+        for group_name, group_spec in self.variable_groups.items():
+            if isinstance(group_spec, list | str):
+                # simple group
+                if self.get_param(variable_name) in (group_spec if isinstance(group_spec, list) else [group_spec]):
+                    LOG.debug(
+                        "Variable %r is in group %r",
+                        variable_name,
+                        group_name,
+                    )
+                    return group_name
+
+            elif isinstance(group_spec, dict):
+                # complex group
+                if variable_name not in self.metadata_variables:
+                    if group_spec.keys() != {"param"}:
+                        error_msg = (
+                            f"Variable {variable_name} not found in metadata and `variable_groups` "
+                            " must be a simple list or a dictionary with only the `param` key."
+                            "\nPlease either provide metadata for the variable or simplify the `variable_groups`."
+                        )
+                        raise ValueError(error_msg)
+
+                    if self.get_param(variable_name) in (
+                        group_spec["param"] if isinstance(group_spec["param"], list) else [group_spec["param"]]
+                    ):
+                        LOG.debug(
+                            "Variable %r is in group %r through specification : %r.",
+                            variable_name,
+                            group_name,
+                            group_spec,
+                        )
+                        return group_name
+                else:
+                    var_metadata = self.metadata_variables.get(variable_name)
+                    if all(
+                        getattr(var_metadata, key) in (val if isinstance(val, list) else [val])
+                        for key, val in group_spec.items()
+                    ):
+                        LOG.debug(
+                            "Variable %r is in group %r through specification : %r.",
+                            variable_name,
+                            group_name,
+                            group_spec,
+                        )
+                        return group_name
+
+        return self.default_group
+
+    def _is_metadata_trusted(self, variable_name: str) -> bool:
+        """Check if the metadata for a variable is trusted.
+
+        This checks if the variable has metadata and checks
+        for valid relations.
+
+        Parameters
+        ----------
+        variable_name : str
+            Name of the variable.
+
+        Returns
+        -------
+        bool
+            True if the metadata is trusted, False otherwise.
+        """
+        if variable_name not in self.metadata_variables:
+            return False
+
+        level = self.metadata_variables[variable_name].level
+        is_vertical_level = not self.metadata_variables[variable_name].is_surface_level
+
+        # If level is not None and is not a surface level, True
+        # If level is None and is a surface level, True
+        return is_vertical_level ^ (level is None)
+
+    def get_param(self, variable_name: str) -> str:
+        """Get the parameter from a variable_name.
+
+        Tries to use the metadata, but if not given
+        will attempt to crack the name. If cannot
+        crack will be the variable_name unchanged.
+
+        Parameters
+        ----------
+        variable_name : str
+            Name of the variable.
+
+        Returns
+        -------
+        param : str
+            Parameter of the variable.
+            Either from the metadata or cracked
+            name.
+        """
+        if self._is_metadata_trusted(variable_name):
+            # if metadata is available: get param from metadata
+            return self.metadata_variables[variable_name].param
+
+        return _crack_variable_name(variable_name)[0]
+
+    def get_level(self, variable_name: str) -> int | None:
+        """Get the level of a variable.
+
+        Parameters
+        ----------
+        variable_name : str
+            Name of the variable.
+
+        Returns
+        -------
+        variable_level : int | None
+            Variable level, checks the variable metadata, or attempts
+            to crack the name, if not found None.
+        """
+        if self._is_metadata_trusted(variable_name):
+            # if metadata is available: get level from metadata
+            return self.metadata_variables[variable_name].level
+
+        return _crack_variable_name(variable_name)[1]
+
+    def get_group_and_level(self, variable_name: str) -> tuple[str, str, int | None]:
+        """Get the group and level of a variable.
+
+        Parameters
+        ----------
+        variable_name : str
+            Name of the variable.
+
+        Returns
+        -------
+        group : str
+            Group of the variable given in the training-config file.
+        parameter : str
+            Parameter reference which corresponds to the variable_name without the variable level.
+            If cannot be split, will be variable_name unchanged.
+        variable_level : int | None
+            Variable level, i.e. pressure level or model level.
+            If variable_name cannot be split, will be None.
+        """
+        return self.get_group(variable_name), self.get_param(variable_name), self.get_level(variable_name)

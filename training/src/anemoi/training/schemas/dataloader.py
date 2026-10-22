@@ -1,0 +1,154 @@
+# (C) Copyright 2024-2026 Anemoi contributors.
+#
+# This software is licensed under the terms of the Apache Licence Version 2.0
+# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
+# In applying this licence, ECMWF does not waive the privileges and immunities
+# granted to it by virtue of its status as an intergovernmental organisation
+# nor does it submit to any jurisdiction.
+
+
+import datetime
+from pathlib import Path
+from typing import Any
+
+from pydantic import BaseModel as PydanticBaseModel
+from pydantic import ConfigDict
+from pydantic import Field
+from pydantic import NonNegativeInt
+from pydantic import PositiveInt
+from pydantic import RootModel
+from pydantic import computed_field
+
+from anemoi.models.schemas.schema_utils import DatasetDict
+from anemoi.utils.dates import frequency_to_timedelta
+from anemoi.utils.schemas import BaseModel
+
+
+class Frequency(RootModel):
+    root: Any
+
+    @computed_field
+    def as_timedelta(self) -> datetime.timedelta:
+        return frequency_to_timedelta(self.root)
+
+    @computed_field
+    def as_string(self) -> str:
+        delta = self.as_timedelta
+
+        if delta.days > 0 and delta.seconds == 0:
+            return f"{delta.days}d"
+
+        if delta.days == 0 and delta.seconds >= 3600 and delta.seconds % 3600 == 0:
+            return f"{delta.seconds // 3600}h"
+
+        if delta.days == 0 and delta.seconds >= 60 and delta.seconds % 60 == 0:
+            return f"{delta.seconds // 60}m"
+
+        if delta.days == 0 and delta.seconds < 60:
+            return f"{delta.seconds}s"
+
+        return str(delta)
+
+    @computed_field
+    def as_seconds(self) -> int:
+        return int(self.as_timedelta.total_seconds())
+
+
+class DatasetConfigSchema(PydanticBaseModel):
+    """Dictionary-style dataset config passed directly to open_dataset."""
+
+    model_config = ConfigDict(extra="allow", arbitrary_types_allowed=True)
+
+    dataset: str | Path | dict | list[dict]
+    "Dataset source identifier."
+    frequency: Frequency | None = Field(default=None)
+    "Optional frequency requested from open_dataset."
+    drop: list[str] | None = Field(default=None)
+    "Optional list of variables to drop from the dataset."
+    select: list[str] | None = Field(default=None)
+    "Optional list of variables to select from the dataset."
+    statistics: str | Path | None = Field(default=None)
+    "Optional path to custom statistics file."
+    step_start: NonNegativeInt | None = Field(default=None)
+    "First forecast step to include, in hours (inclusive). Selects ForecastStepDataset when set."
+    step_end: PositiveInt | None = Field(default=None)
+    "Last forecast step to include, in hours (inclusive). Selects ForecastStepDataset when set."
+    step_frequency: PositiveInt | None = Field(default=None)
+    "Stride between selected forecast steps, in hours. Selects ForecastStepDataset when set."
+
+    # Note this should be extended in the future to have a full schema for the keys
+    # supported by open_dataset and be moved to anemoi-datasets.
+
+
+class NativeDatasetSchema(BaseModel):
+    """Dataset configuration schema."""
+
+    dataset_config: str | DatasetConfigSchema | Path | list[dict] | None = None
+    "Dataset definition passed to open_dataset."
+    start: str | int | None = Field(default=None)
+    "Starting datetime for sample of the dataset."
+    end: str | int | None = Field(default=None)
+    "Ending datetime [inclusive] for sample of the dataset."
+
+
+class TrajectorySamplingSchema(PydanticBaseModel):
+    """Trajectory anchor sampling configuration."""
+
+    stride: int | None = Field(default=None)
+    "Stride between anchor positions. None = window size (non-overlapping); 1 = every position."
+
+
+class TrajectorySchema(PydanticBaseModel):
+    """Trajectory (forecast) reader configuration for 5-D trajectory zarr datasets."""
+
+    sampling: TrajectorySamplingSchema | None = Field(default=None)
+    "Anchor sampling config. stride=None → non-overlapping; stride=1 → all; stride=N → step N."
+
+
+class TrajectoryDatasetSchema(NativeDatasetSchema):
+    """Dataset configuration schema."""
+
+    trajectory: TrajectorySchema | None = Field(default=None)
+    "Trajectory configuration."
+
+
+class LoaderSet(BaseModel):
+    training: NonNegativeInt | None = Field(example=None)
+    "Value for training dataset"
+    validation: NonNegativeInt | None = Field(example=None)
+    "Value for validation dataset"
+    test: NonNegativeInt | None = Field(example=None)
+    "Value for test dataset"
+
+
+class DataLoaderSchema(PydanticBaseModel):
+
+    model_config = ConfigDict(extra="allow", arbitrary_types_allowed=True)
+
+    prefetch_factor: int = Field(example=2, ge=0)
+    "Number of batches loaded in advance by each worker."
+    pin_memory: bool = Field(example=True)
+    "If True, the data loader will copy Tensors into device/CUDA pinned memory before returning them."
+    persistent_workers: bool = Field(default=True)
+    "Keep dataloader workers alive between epochs. Automatically disabled when the rollout changes between epochs."
+    fake_dataloading: bool = Field(default=False)
+    "Load one real sample per worker and reuse it for subsequent accesses."
+    num_workers: LoaderSet
+    "Number of process per-GPU for batch distribution."
+    batch_size: LoaderSet
+    "Per-GPU batch size."
+    limit_batches: LoaderSet = Field(example=None)
+    "Limit number of batches to run. Default value null, will run on all the batches."
+    training: DatasetDict[NativeDatasetSchema | TrajectoryDatasetSchema]
+    "Training DatasetSchema."
+    validation: DatasetDict[NativeDatasetSchema | TrajectoryDatasetSchema]
+    "Validation DatasetSchema."
+    test: DatasetDict[NativeDatasetSchema | TrajectoryDatasetSchema]
+    "Test DatasetSchema."
+    read_group_size: PositiveInt = Field(example=None)
+    "Number of GPUs per reader group. Defaults to number of GPUs (see BaseSchema validators)."
+    trajectory_sampling: TrajectorySamplingSchema | None = Field(default=None)
+    "Default trajectory anchor sampling used across all splits. stride=None → non-overlapping; stride=N → step N."
+    multiprocessing_context: str | None = Field(default=None, examples=[None, "spawn", "fork", "forkserver"])
+    "Multiprocessing context to use for workers. If None, the default context will be used"

@@ -1,0 +1,227 @@
+# (C) Copyright 2024-2026 Anemoi contributors.
+#
+# This software is licensed under the terms of the Apache Licence Version 2.0
+# which can be obtained at http://www.apache.org/licenses/LICENSE-2.0.
+#
+# In applying this licence, ECMWF does not waive the privileges and immunities
+# granted to it by virtue of its status as an intergovernmental organisation
+# nor does it submit to any jurisdiction.
+
+
+import logging
+
+import pytest
+import torch
+from hypothesis import given
+from hypothesis import settings
+from hypothesis import strategies as st
+from torch import nn
+
+from anemoi.models.distributed.shapes import GraphShardInfo
+from anemoi.models.layers.attention import MultiHeadSelfAttention
+from anemoi.models.layers.block import MLP
+from anemoi.models.layers.block import GraphConvProcessorBlock
+from anemoi.models.layers.block import TransformerProcessorBlock
+from anemoi.models.layers.conv import GraphConv
+from anemoi.models.layers.utils import load_layer_kernels
+
+LOGGER = logging.getLogger(__name__)
+
+
+def _conditional_layer_kernels(condition_shape: int):
+    return load_layer_kernels(
+        {
+            "LayerNorm": {
+                "_target_": "anemoi.models.layers.normalization.ConditionalLayerNorm",
+                "condition_shape": condition_shape,
+            }
+        }
+    )
+
+
+class TestTransformerProcessorBlock:
+    @given(
+        factor_attention_heads=st.integers(min_value=1, max_value=10),
+        hidden_dim=st.integers(min_value=1, max_value=100),
+        num_heads=st.integers(min_value=1, max_value=10),
+        activation=st.sampled_from(
+            [
+                "torch.nn.ReLU",
+                "torch.nn.GELU",
+            ]
+        ),
+        window_size=st.integers(min_value=1, max_value=512),
+        dropout_p=st.floats(min_value=0.0, max_value=1.0),
+        qk_norm=st.booleans(),
+    )
+    @settings(max_examples=10)
+    def test_init(self, factor_attention_heads, hidden_dim, num_heads, activation, window_size, dropout_p, qk_norm):
+        num_channels = num_heads * factor_attention_heads
+
+        layer_kernels = load_layer_kernels({"Activation": {"_target_": activation}})
+
+        block = TransformerProcessorBlock(
+            num_channels=num_channels,
+            hidden_dim=hidden_dim,
+            num_heads=num_heads,
+            window_size=window_size,
+            dropout_p=dropout_p,
+            layer_kernels=layer_kernels,
+            attention_implementation="scaled_dot_product_attention",
+            qk_norm=qk_norm,
+        )
+        assert isinstance(block, TransformerProcessorBlock)
+
+        assert isinstance(block.layer_norm_attention, nn.LayerNorm)
+        assert isinstance(block.layer_norm_mlp, nn.LayerNorm)
+        assert isinstance(block.mlp, MLP)
+        assert isinstance(block.attention, MultiHeadSelfAttention)
+        assert block.attention.qk_norm == qk_norm
+
+    @given(
+        factor_attention_heads=st.integers(min_value=1, max_value=10),
+        hidden_dim=st.integers(min_value=1, max_value=100),
+        num_heads=st.integers(min_value=1, max_value=10),
+        activation=st.sampled_from(["torch.nn.ReLU", "torch.nn.GELU"]),
+        mlp_implementation=st.sampled_from(["mlp", "glu", "swiglu", "geglu", "reglu"]),
+        batch_size=st.integers(min_value=1, max_value=40),
+        dropout_p=st.floats(min_value=0.0, max_value=1.0),
+        qk_norm=st.booleans(),
+    )
+    @settings(max_examples=10, deadline=None)
+    def test_forward_output(
+        self,
+        factor_attention_heads,
+        hidden_dim,
+        num_heads,
+        activation,
+        mlp_implementation,
+        batch_size,
+        dropout_p,
+        qk_norm,
+    ):
+        num_channels = num_heads * factor_attention_heads
+
+        layer_kernels = load_layer_kernels({"Activation": {"_target_": activation}})
+
+        block = TransformerProcessorBlock(
+            num_channels=num_channels,
+            hidden_dim=hidden_dim,
+            num_heads=num_heads,
+            window_size=None,
+            dropout_p=dropout_p,
+            layer_kernels=layer_kernels,
+            attention_implementation="scaled_dot_product_attention",
+            mlp_implementation=mlp_implementation,
+            softcap=None,
+            qk_norm=qk_norm,
+        )
+
+        x = torch.randn((batch_size, num_channels))  # .to(torch.float16, non_blocking=True)
+        shape_info = GraphShardInfo(nodes=[batch_size])
+        output = block.forward(x, shape_info, batch_size)
+        assert isinstance(output[0], torch.Tensor)
+        assert output[0].shape == (batch_size, num_channels)
+
+    def test_custom_attn_channels(self):
+        num_channels = 128
+        num_heads = 8
+        attn_channels = 96
+
+        block = TransformerProcessorBlock(
+            num_channels=num_channels,
+            hidden_dim=256,
+            attn_channels=attn_channels,
+            num_heads=num_heads,
+            window_size=None,
+            dropout_p=0.0,
+            layer_kernels=load_layer_kernels(),
+            attention_implementation="scaled_dot_product_attention",
+            softcap=None,
+            qk_norm=False,
+        )
+
+        assert block.attention.attn_channels == attn_channels
+        assert block.attention.projection.in_features == attn_channels
+        assert block.attention.projection.out_features == num_channels
+
+        x = torch.randn((4, num_channels))
+        output = block.forward(x, GraphShardInfo(nodes=[4]), batch_size=1)
+        assert output[0].shape == (4, num_channels)
+
+    def test_forward_output_with_conditioning(self):
+        condition_shape = 6
+        num_channels = 8
+        block = TransformerProcessorBlock(
+            num_channels=num_channels,
+            hidden_dim=16,
+            num_heads=2,
+            window_size=None,
+            dropout_p=0.0,
+            layer_kernels=_conditional_layer_kernels(condition_shape),
+            attention_implementation="scaled_dot_product_attention",
+            softcap=None,
+            qk_norm=False,
+        )
+
+        x = torch.randn((5, num_channels))
+        cond = torch.randn((5, condition_shape))
+        output = block.forward(x, GraphShardInfo(nodes=[5]), batch_size=1, cond=cond)
+
+        assert output[0].shape == (5, num_channels)
+
+    def test_custom_attn_channels_must_be_divisible_by_num_heads(self):
+        with pytest.raises(ValueError, match="attn_channels"):
+            TransformerProcessorBlock(
+                num_channels=128,
+                hidden_dim=256,
+                attn_channels=100,
+                num_heads=8,
+                window_size=None,
+                dropout_p=0.0,
+                layer_kernels=load_layer_kernels(),
+                attention_implementation="scaled_dot_product_attention",
+                softcap=None,
+                qk_norm=False,
+            )
+
+
+class TestGraphConvProcessorBlock:
+    @given(
+        in_channels=st.integers(min_value=1, max_value=100),
+        out_channels=st.integers(min_value=1, max_value=100),
+        mlp_extra_layers=st.integers(min_value=1, max_value=5),
+        activation=st.sampled_from(["torch.nn.ReLU", "torch.nn.GELU"]),
+        mlp_implementation=st.sampled_from(["mlp", "glu", "swiglu", "geglu", "reglu"]),
+        update_src_nodes=st.booleans(),
+        num_chunks=st.integers(min_value=1, max_value=10),
+    )
+    @settings(max_examples=10)
+    def test_init(
+        self,
+        in_channels,
+        out_channels,
+        mlp_extra_layers,
+        activation,
+        mlp_implementation,
+        update_src_nodes,
+        num_chunks,
+    ):
+        layer_kernels = load_layer_kernels({"Activation": {"_target_": activation}})
+
+        block = GraphConvProcessorBlock(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            layer_kernels=layer_kernels,
+            mlp_extra_layers=mlp_extra_layers,
+            mlp_implementation=mlp_implementation,
+            update_src_nodes=update_src_nodes,
+            num_chunks=num_chunks,
+        )
+
+        assert isinstance(block, GraphConvProcessorBlock)
+        assert isinstance(block.node_mlp, MLP)
+        assert isinstance(block.conv, GraphConv)
+
+        assert block.update_src_nodes == update_src_nodes
+        assert block.num_chunks == num_chunks
