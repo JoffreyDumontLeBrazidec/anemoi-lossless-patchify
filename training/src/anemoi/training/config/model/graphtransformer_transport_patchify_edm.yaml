@@ -1,14 +1,14 @@
 ---
-# Spatial downscaler with the exact slot read as encoder and the tied slot head as decoder.
+# Spatial downscaler with the Patchify as encoder and Unpatchify as decoder (DiT patchify / unpatchify).
 # Needs max_points x encoder input width <= num_channels, and enough hidden nodes for max_points per node.
 defaults:
   - graphtransformer_transport_residual_edm
   - _self_
 
 model:
-  _target_: anemoi.models.models.AnemoiTransportLosslessDownscalerModelEncProcDec
+  _target_: anemoi.models.models.AnemoiTransportPatchifyDownscalerModelEncProcDec
 
-lossless:
+patchify:
   max_points: 14
   head_hidden: 256
   read_seed: 0

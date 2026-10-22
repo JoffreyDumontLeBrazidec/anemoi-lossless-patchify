@@ -7,11 +7,11 @@
 # granted to it by virtue of its status as an intergovernmental organisation
 # nor does it submit to any jurisdiction.
 
-"""Spatial downscaler with a lossless encoder and decoder.
+"""Spatial downscaler with a patchify encoder and an unpatchify decoder, as in a diffusion transformer (DiT).
 
-Every grid point belongs to one hidden node and holds a fixed slot in it. The encoder adds an exact,
-injective linear read of the node's points to the attention encoder's latent. The decoder is one head per
-slot on the processed token, tied at initialisation to the transpose of the read.
+Every grid point belongs to one hidden node (its patch) and holds a fixed slot in it. Patchify adds an exact,
+injective linear read of the patch to the attention encoder's latent. Unpatchify is one head per slot on the
+processed token, tied at initialisation to the transpose of the read.
 """
 
 import numpy as np
@@ -83,8 +83,8 @@ def _point_rows(node: torch.Tensor, num_nodes: int, bse: int) -> torch.Tensor:
     return (node[None, :] + offsets[:, None]).reshape(-1)
 
 
-class ExactSlotRead(nn.Module):
-    """Encoder: ``token = W @ patch + ctx_map(LN(encoder latent))``, with ``patch`` the slot-padded points of a node."""
+class Patchify(nn.Module):
+    """Patchify: ``token = W @ patch + ctx_map(LN(encoder latent))``, with ``patch`` the slot-padded points of a node."""
 
     def __init__(
         self, encoder: nn.Module, node: np.ndarray, slot: np.ndarray, num_nodes: int, read_weight: torch.Tensor
@@ -106,7 +106,7 @@ class ExactSlotRead(nn.Module):
     def forward(self, x: tuple[torch.Tensor, torch.Tensor], **kwargs) -> tuple[torch.Tensor, torch.Tensor]:
         group = kwargs.get("model_comm_group")
         if kwargs["shard_info"].src_nodes is not None or (group is not None and group.size() > 1):
-            raise NotImplementedError("The lossless encoder needs the whole grid on one GPU.")
+            raise NotImplementedError("Patchify needs the whole grid on one GPU.")
         x_data, context = self.encoder(x, **kwargs)
         x_points = x[0]
         bse = x_points.shape[0] // self.node.numel()
@@ -116,8 +116,8 @@ class ExactSlotRead(nn.Module):
         return x_data, token + self.context_map(self.context_norm(context))
 
 
-class TiedSlotHead(nn.Module):
-    """Decoder: ``out_i = P_s A_s^T t + Q_s gelu(B_s^T t + b_s) + c_s``, ``t = LN(token of node(i))``, ``s = slot(i)``.
+class Unpatchify(nn.Module):
+    """Unpatchify: ``out_i = P_s A_s^T t + Q_s gelu(B_s^T t + b_s) + c_s``, ``t = LN(token of node(i))``, ``s = slot(i)``.
 
     ``A_s`` starts as the slot's read matrix, ``P_s`` selects the noised target and ``Q_s`` is zero.
     """
@@ -164,14 +164,14 @@ class TiedSlotHead(nn.Module):
         return out[_point_rows(self.node, self.num_nodes, bse), self.slot.repeat(bse)]
 
 
-class AnemoiTransportLosslessDownscalerModelEncProcDec(AnemoiTransportSpatialDownscalerModelEncProcDec):
-    """Spatial downscaler whose encoder is the exact slot read and whose decoder is the tied slot head."""
+class AnemoiTransportPatchifyDownscalerModelEncProcDec(AnemoiTransportSpatialDownscalerModelEncProcDec):
+    """Spatial downscaler whose encoder is Patchify and whose decoder is Unpatchify."""
 
     def _build_networks(self, model_config: DotDict) -> None:
         super()._build_networks(model_config)
-        cfg = model_config.get("lossless") or {}
+        cfg = model_config.get("patchify") or {}
         if len(self.target_datasets) != 1:
-            raise ValueError(f"The lossless downscaler takes one target, got {self.target_datasets}.")
+            raise ValueError(f"The patchify downscaler takes one target, got {self.target_datasets}.")
         target = self.target_datasets[0]
         anchor = self._anchor_of_target(target)
         hidden = self._graph_name_hidden
@@ -192,7 +192,7 @@ class AnemoiTransportLosslessDownscalerModelEncProcDec(AnemoiTransportSpatialDow
         target_cols = torch.arange(n_history, n_history + self.output_dim[target])
 
         encoder_name, decoder_name = self.dataset2encoder[anchor], self.dataset2decoder[target]
-        self.encoder[encoder_name] = ExactSlotRead(self.encoder[encoder_name], node, slot, num_nodes, read_weight)
-        self.decoder[decoder_name] = TiedSlotHead(
+        self.encoder[encoder_name] = Patchify(self.encoder[encoder_name], node, slot, num_nodes, read_weight)
+        self.decoder[decoder_name] = Unpatchify(
             node, slot, num_nodes, read_weight, target_cols, cfg.get("head_hidden", 256)
         )

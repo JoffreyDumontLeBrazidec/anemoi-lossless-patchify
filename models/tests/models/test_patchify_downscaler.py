@@ -13,11 +13,11 @@ import numpy as np
 import torch
 from torch import nn
 
-from anemoi.models.models.lossless_downscaler import AnemoiTransportLosslessDownscalerModelEncProcDec
-from anemoi.models.models.lossless_downscaler import ExactSlotRead
-from anemoi.models.models.lossless_downscaler import TiedSlotHead
-from anemoi.models.models.lossless_downscaler import build_patch_assignment
-from anemoi.models.models.lossless_downscaler import orthonormal_read_basis
+from anemoi.models.models.patchify_downscaler import AnemoiTransportPatchifyDownscalerModelEncProcDec
+from anemoi.models.models.patchify_downscaler import Patchify
+from anemoi.models.models.patchify_downscaler import Unpatchify
+from anemoi.models.models.patchify_downscaler import build_patch_assignment
+from anemoi.models.models.patchify_downscaler import orthonormal_read_basis
 from tests.models.test_transport_spatial_downscaler import _make_downscaler_config
 from tests.models.test_transport_spatial_downscaler import _make_downscaler_graph
 from tests.models.test_transport_spatial_downscaler import _make_downscaler_indices
@@ -35,8 +35,8 @@ def _read_and_head(n_in: int = 5, width: int = 64, target_cols=(2, 3)):
     node, slot = build_patch_assignment(_coords(GRID, 0), _coords(HIDDEN, 1), MAX_POINTS)
     weight = orthonormal_read_basis(width, int(slot.max()) + 1, n_in)
     context_free = lambda x, **kwargs: (x[0], torch.zeros(HIDDEN, width))
-    read = ExactSlotRead(context_free, node, slot, HIDDEN, weight)
-    head = TiedSlotHead(node, slot, HIDDEN, weight, torch.tensor(target_cols))
+    read = Patchify(context_free, node, slot, HIDDEN, weight)
+    head = Unpatchify(node, slot, HIDDEN, weight, torch.tensor(target_cols))
     return read, head, n_in
 
 
@@ -63,14 +63,14 @@ def test_step0_head_returns_its_own_noised_target() -> None:
 
 def test_toy_forward() -> None:
     config = _make_downscaler_config(num_channels=128)
-    config.model._target_ = "anemoi.models.models.AnemoiTransportLosslessDownscalerModelEncProcDec"
-    config.lossless = {"max_points": MAX_POINTS, "head_hidden": 16}
+    config.model._target_ = "anemoi.models.models.AnemoiTransportPatchifyDownscalerModelEncProcDec"
+    config.patchify = {"max_points": MAX_POINTS, "head_hidden": 16}
     graph = _make_downscaler_graph(grid=GRID, hidden=HIDDEN)
     for name in ("out_hres", "in_lres", "in_hres"):
         graph[name].x = torch.from_numpy(_coords(GRID, 0)).float()
     graph["hidden"].x = torch.from_numpy(_coords(HIDDEN, 1)).float()
 
-    model = AnemoiTransportLosslessDownscalerModelEncProcDec(
+    model = AnemoiTransportPatchifyDownscalerModelEncProcDec(
         model_config=config,
         data_indices=_make_downscaler_indices(),
         statistics={name: None for name in ("out_hres", "in_lres", "in_hres")},
@@ -78,8 +78,8 @@ def test_toy_forward() -> None:
         n_step_output=1,
         graph_data=graph,
     )
-    assert isinstance(model.encoder["enc0"], ExactSlotRead)
-    assert isinstance(model.decoder["dec0"], TiedSlotHead)
+    assert isinstance(model.encoder["enc0"], Patchify)
+    assert isinstance(model.decoder["dec0"], Unpatchify)
 
     batch = {"in_lres": torch.randn(1, 1, GRID, 2), "in_hres": torch.randn(1, 1, GRID, 1)}
     out = _run_real_predict_step(model, batch)

@@ -72,11 +72,11 @@ class DefinedModels(str, Enum):
     ANEMOI_TRANSPORT_SPATIAL_DOWNSCALER_MODEL_ENC_PROC_DEC_SHORT = (
         "anemoi.models.models.AnemoiTransportSpatialDownscalerModelEncProcDec"
     )
-    ANEMOI_TRANSPORT_LOSSLESS_DOWNSCALER_MODEL_ENC_PROC_DEC = (
-        "anemoi.models.models.lossless_downscaler.AnemoiTransportLosslessDownscalerModelEncProcDec"
+    ANEMOI_TRANSPORT_PATCHIFY_DOWNSCALER_MODEL_ENC_PROC_DEC = (
+        "anemoi.models.models.patchify_downscaler.AnemoiTransportPatchifyDownscalerModelEncProcDec"
     )
-    ANEMOI_TRANSPORT_LOSSLESS_DOWNSCALER_MODEL_ENC_PROC_DEC_SHORT = (
-        "anemoi.models.models.AnemoiTransportLosslessDownscalerModelEncProcDec"
+    ANEMOI_TRANSPORT_PATCHIFY_DOWNSCALER_MODEL_ENC_PROC_DEC_SHORT = (
+        "anemoi.models.models.AnemoiTransportPatchifyDownscalerModelEncProcDec"
     )
 
 
@@ -375,7 +375,7 @@ class TransportSpatialDownscalerModelSchema(TransportModelSchema):
         return self
 
 
-class LosslessSchema(BaseModel):
+class PatchifySchema(BaseModel):
     max_points: PositiveInt = Field(default=14)
     "Most grid points per hidden node, which is the number of slots."
     head_hidden: NonNegativeInt = Field(default=256)
@@ -384,9 +384,9 @@ class LosslessSchema(BaseModel):
     "Seed of the orthonormal read basis."
 
 
-class TransportLosslessDownscalerModelSchema(TransportSpatialDownscalerModelSchema):
-    lossless: LosslessSchema = Field(default_factory=LosslessSchema)
-    "Exact slot read encoder and tied slot head decoder."
+class TransportPatchifyDownscalerModelSchema(TransportSpatialDownscalerModelSchema):
+    patchify: PatchifySchema = Field(default_factory=PatchifySchema)
+    "Patchify encoder and unpatchify decoder."
 
 
 class HierarchicalModelSchema(BaseModelSchema):
@@ -439,5 +439,5 @@ ModelSchema = Union[
     TransportModelSchema,
     TransportTendModelSchema,
     TransportSpatialDownscalerModelSchema,
-    TransportLosslessDownscalerModelSchema,
+    TransportPatchifyDownscalerModelSchema,
 ]
