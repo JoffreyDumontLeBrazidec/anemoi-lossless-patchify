@@ -72,6 +72,12 @@ class DefinedModels(str, Enum):
     ANEMOI_TRANSPORT_SPATIAL_DOWNSCALER_MODEL_ENC_PROC_DEC_SHORT = (
         "anemoi.models.models.AnemoiTransportSpatialDownscalerModelEncProcDec"
     )
+    ANEMOI_TRANSPORT_LOSSLESS_DOWNSCALER_MODEL_ENC_PROC_DEC = (
+        "anemoi.models.models.lossless_downscaler.AnemoiTransportLosslessDownscalerModelEncProcDec"
+    )
+    ANEMOI_TRANSPORT_LOSSLESS_DOWNSCALER_MODEL_ENC_PROC_DEC_SHORT = (
+        "anemoi.models.models.AnemoiTransportLosslessDownscalerModelEncProcDec"
+    )
 
 
 class Model(BaseModel):
@@ -369,6 +375,20 @@ class TransportSpatialDownscalerModelSchema(TransportModelSchema):
         return self
 
 
+class LosslessSchema(BaseModel):
+    max_points: PositiveInt = Field(default=14)
+    "Most grid points per hidden node, which is the number of slots."
+    head_hidden: NonNegativeInt = Field(default=256)
+    "Width of the zero-initialised non-linear branch of each slot head."
+    read_seed: NonNegativeInt = Field(default=0)
+    "Seed of the orthonormal read basis."
+
+
+class TransportLosslessDownscalerModelSchema(TransportSpatialDownscalerModelSchema):
+    lossless: LosslessSchema = Field(default_factory=LosslessSchema)
+    "Exact slot read encoder and tied slot head decoder."
+
+
 class HierarchicalModelSchema(BaseModelSchema):
     enable_hierarchical_level_processing: bool = Field(default=False)
     "Toggle to do message passing at every downscaling and upscaling step"
@@ -419,4 +439,5 @@ ModelSchema = Union[
     TransportModelSchema,
     TransportTendModelSchema,
     TransportSpatialDownscalerModelSchema,
+    TransportLosslessDownscalerModelSchema,
 ]

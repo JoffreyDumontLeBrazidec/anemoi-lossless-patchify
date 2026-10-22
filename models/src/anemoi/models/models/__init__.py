@@ -15,6 +15,7 @@ from .hierarchical import AnemoiModelEncProcDecHierarchical
 from .transport_encoder_processor_decoder import AnemoiTransportModelEncProcDec  # isort: skip
 from .transport_encoder_processor_decoder import AnemoiTransportSpatialDownscalerModelEncProcDec  # isort: skip
 from .transport_encoder_processor_decoder import AnemoiTransportTendModelEncProcDec  # isort: skip
+from .lossless_downscaler import AnemoiTransportLosslessDownscalerModelEncProcDec  # isort: skip
 
 __all__ = [
     "BaseGraphModel",
@@ -22,6 +23,7 @@ __all__ = [
     "AnemoiEnsModelEncProcDec",
     "AnemoiTransportModelEncProcDec",
     "AnemoiTransportSpatialDownscalerModelEncProcDec",
+    "AnemoiTransportLosslessDownscalerModelEncProcDec",
     "AnemoiTransportTendModelEncProcDec",
     "AnemoiModelEncProcDecHierarchical",
     "AnemoiEnsModelEncProcDec",
