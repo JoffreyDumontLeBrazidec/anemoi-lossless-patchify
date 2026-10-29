@@ -9,9 +9,11 @@
 
 """Spatial downscaler with a patchify encoder and an unpatchify decoder, as in a diffusion transformer (DiT).
 
-Every grid point belongs to one hidden node (its patch) and holds a fixed slot in it. Patchify adds an exact,
-injective linear read of the patch to the attention encoder's latent. Unpatchify is one head per slot on the
-processed token, tied at initialisation to the transpose of the read.
+Every grid point belongs to one hidden node (its patch) and holds a fixed slot in it. Patchify is the exact,
+injective linear read of the patch: the hidden token is ``W @ patch`` and nothing else (no attention encoder,
+no encoder edges). Unpatchify is one head per slot on the processed token, tied at initialisation to the
+transpose of the read, so that before training each point's head returns its own noised target up to the
+decoder LayerNorm scale and the processor's residual.
 """
 
 import numpy as np
@@ -21,6 +23,7 @@ from scipy.spatial import cKDTree
 from torch import nn
 from torch.utils.checkpoint import checkpoint
 
+from anemoi.models.layers.graph_provider import NoOpGraphProvider
 from anemoi.models.models.transport_encoder_processor_decoder import AnemoiTransportSpatialDownscalerModelEncProcDec
 from anemoi.utils.config import DotDict
 
@@ -84,36 +87,34 @@ def _point_rows(node: torch.Tensor, num_nodes: int, bse: int) -> torch.Tensor:
 
 
 class Patchify(nn.Module):
-    """Patchify: ``token = W @ patch + ctx_map(LN(encoder latent))``, with ``patch`` the slot-padded points of a node."""
+    """Patchify: ``token = W @ patch``, with ``patch`` the slot-padded points of a node.
 
-    def __init__(
-        self, encoder: nn.Module, node: np.ndarray, slot: np.ndarray, num_nodes: int, read_weight: torch.Tensor
-    ):
+    ``W`` has orthonormal columns, so ``W^T token`` returns every point's input columns exactly. It replaces the
+    attention encoder; the hidden node's own attributes are not read.
+    """
+
+    def __init__(self, node: np.ndarray, slot: np.ndarray, num_nodes: int, read_weight: torch.Tensor):
         super().__init__()
-        width = read_weight.shape[0]
-        self.encoder = encoder
         self.register_buffer("node", torch.from_numpy(node), persistent=False)
         self.register_buffer("slot", torch.from_numpy(slot), persistent=False)
         self.num_nodes = num_nodes
         self.num_slots = int(slot.max()) + 1
+        self.hidden_dim = read_weight.shape[0]
         self.weight = nn.Parameter(read_weight.clone())
         self.n_in = read_weight.shape[1] // self.num_slots
-        self.context_norm = nn.LayerNorm(width, elementwise_affine=False)
-        self.context_map = nn.Linear(width, width)
-        nn.init.eye_(self.context_map.weight)
-        nn.init.zeros_(self.context_map.bias)
 
     def forward(self, x: tuple[torch.Tensor, torch.Tensor], **kwargs) -> tuple[torch.Tensor, torch.Tensor]:
         group = kwargs.get("model_comm_group")
         if kwargs["shard_info"].src_nodes is not None or (group is not None and group.size() > 1):
             raise NotImplementedError("Patchify needs the whole grid on one GPU.")
-        x_data, context = self.encoder(x, **kwargs)
         x_points = x[0]
+        if x_points.shape[0] % self.node.numel():
+            raise ValueError(f"{x_points.shape[0]} rows are not a multiple of the {self.node.numel()}-point grid.")
         bse = x_points.shape[0] // self.node.numel()
         patch = x_points.new_zeros(bse * self.num_nodes, self.num_slots, self.n_in)
         patch[_point_rows(self.node, self.num_nodes, bse), self.slot.repeat(bse)] = x_points
         token = F.linear(patch.flatten(1), self.weight.to(patch.dtype))
-        return x_data, token + self.context_map(self.context_norm(context))
+        return x_points, token
 
 
 class Unpatchify(nn.Module):
@@ -165,7 +166,11 @@ class Unpatchify(nn.Module):
 
 
 class AnemoiTransportPatchifyDownscalerModelEncProcDec(AnemoiTransportSpatialDownscalerModelEncProcDec):
-    """Spatial downscaler whose encoder is Patchify and whose decoder is Unpatchify."""
+    """Spatial downscaler whose encoder is Patchify and whose decoder is Unpatchify.
+
+    The parent builds the configured encoder and decoder mappers and their edge providers first (the schema needs
+    them); they are then replaced, so no attention mapper and no data-hidden edge is left in the model.
+    """
 
     def _build_networks(self, model_config: DotDict) -> None:
         super()._build_networks(model_config)
@@ -192,7 +197,9 @@ class AnemoiTransportPatchifyDownscalerModelEncProcDec(AnemoiTransportSpatialDow
         target_cols = torch.arange(n_history, n_history + self.output_dim[target])
 
         encoder_name, decoder_name = self.dataset2encoder[anchor], self.dataset2decoder[target]
-        self.encoder[encoder_name] = Patchify(self.encoder[encoder_name], node, slot, num_nodes, read_weight)
+        self.encoder[encoder_name] = Patchify(node, slot, num_nodes, read_weight)
         self.decoder[decoder_name] = Unpatchify(
             node, slot, num_nodes, read_weight, target_cols, cfg.get("head_hidden", 256)
         )
+        self.encoder_graph_provider[anchor] = NoOpGraphProvider()
+        self.decoder_graph_provider[target] = NoOpGraphProvider()

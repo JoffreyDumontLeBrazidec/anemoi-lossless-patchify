@@ -1,12 +1,26 @@
 ---
-# Spatial downscaler with the Patchify as encoder and Unpatchify as decoder (DiT patchify / unpatchify).
-# Needs max_points x encoder input width <= num_channels, and enough hidden nodes for max_points per node.
+# Spatial downscaler with Patchify as the encoder and Unpatchify as the decoder (DiT patchify / unpatchify).
+# Pure patchify: the hidden token is the exact read W @ patch of the points assigned to the node; there is no
+# attention encoder, no data-hidden edge and no hidden-node feature in the model. The inherited encoders/decoders
+# mapper blocks are required by the schema and are built, then replaced; their settings have no effect.
+# Constraints: one GPU per model (system.hardware.num_gpus_per_model: 1; sharding raises at the first step);
+# max_points x encoder input width (history + noised target + node attributes) <= num_channels; the hidden mesh
+# must hold the target grid at fewer than max_points points per node, with some slack.
 defaults:
   - graphtransformer_transport_residual_edm
   - _self_
 
 model:
   _target_: anemoi.models.models.AnemoiTransportPatchifyDownscalerModelEncProcDec
+
+# The hidden-node features are not read by Patchify, so their trainable part would never get a gradient.
+node_trainable_parameters:
+  hidden: 0
+
+# Data-hidden and hidden-data edges are replaced by the point-to-node assignment.
+edge_trainable_parameters:
+  data2hidden: 0
+  hidden2data: 0
 
 patchify:
   max_points: 14
